@@ -61,8 +61,6 @@ def save_words_to_lexicon(filtered_words):
 
     print("Words have been saved to the lexicon.")
 
-
-
 def read_column_from_csv(csv_file, column_name):
     
     column_data = []
@@ -78,11 +76,57 @@ def read_column_from_csv(csv_file, column_name):
     return column_data
 
 
+def load_latest_doc_id():
+    doc_id_file = 'latest_doc_id.txt'
+    
+    # Read the latest doc ID from the file
+    if os.path.exists(doc_id_file):
+        with open(doc_id_file, 'r') as file:
+            latest_doc_id = int(file.read().strip())
+    else:
+        latest_doc_id = 0
+
+    return latest_doc_id
+
+def save_processed_docs(new_entries, latest_doc_id):
+    processed_file = 'processed.csv'    
+    doc_id_file = 'latest_doc_id.txt'
+
+    # Append new entries to the CSV
+    with open(processed_file, mode='a', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        if os.stat(processed_file).st_size == 0:
+            writer.writerow(['ID', 'title', 'url', 'authors', 'timestamp', 'tags'])
+        writer.writerows(new_entries)
+
+    # Save the latest ID
+    with open(doc_id_file, 'w') as file:
+        file.write(str(latest_doc_id))
+
+def load_processed_entries():
+    processed_file = 'processed.csv'
+    processed_set = set()
+
+    # Load already processed entries into a set
+    if os.path.exists(processed_file):
+        with open(processed_file, mode='r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            next(reader, None)  # Skip the header
+            for row in reader:
+                processed_set.add(tuple(row[1:]))  # Use title, url, authors, timestamp, and tags for uniqueness
+
+    return processed_set
+
+
+# The bread, the butter, and the jam
 def extract_filtered_words_from_csv(csv_filename):
     stop_words = set(stopwords.words('english'))
     pattern = r'[^A-Za-z ]+' 
     chunk_size = 1000
     filtered_words = []
+    new_entries = []
+    latest_doc_id = load_latest_doc_id()
+    processed_set = load_processed_entries()  # Load already processed entries
     
     try:
         with open(csv_filename, mode='r', encoding='utf-8') as file:
@@ -90,6 +134,10 @@ def extract_filtered_words_from_csv(csv_filename):
             row_count = 0
             
             for row in reader:
+                current_entry = (row['title'], row['url'], row['authors'], row['timestamp'], row['tags'])
+                if current_entry in processed_set:
+                    continue  # Skip processing if already exists
+                
                 # Combine "title", "text", and "tags" columns
                 combined_text = f"{row['title']} {row['text']} {row['tags']}"
                 # Clean and tokenize text
@@ -102,6 +150,10 @@ def extract_filtered_words_from_csv(csv_filename):
                 )
                 
                 row_count += 1
+                latest_doc_id += 1
+                new_entries.append([latest_doc_id, row['title'], row['url'], row['authors'], row['timestamp'], row['tags']])
+                processed_set.add(current_entry)
+                print([latest_doc_id, row['title'], row['url'], row['authors'], row['timestamp'], row['tags']])
                 
                 # Save and clear the list every chunk_size rows
                 if row_count % chunk_size == 0:
@@ -113,6 +165,7 @@ def extract_filtered_words_from_csv(csv_filename):
             if filtered_words:
                 filtered_words = list(dict.fromkeys(filtered_words))  # Deduplicate
                 save_words_to_lexicon(filtered_words)
+            save_processed_docs(new_entries, latest_doc_id)
 
     except FileNotFoundError:
         print(f"File not found: {csv_filename}")
