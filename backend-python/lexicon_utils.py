@@ -27,6 +27,7 @@ def load_lexicon(lexicon_file):
             next(csv_reader)  # Skip the header
             for row in csv_reader:
                 lexicon[row[1]] = int(row[0])  # Map word to wordID
+    print("Lexicon Loaded!")
     return lexicon
 
 def save_words_to_lexicon(filtered_words, lexicon_dict):
@@ -65,7 +66,7 @@ def save_words_to_lexicon(filtered_words, lexicon_dict):
 def create_and_update_lexicon(csv_filename, lexicon_file):
     stop_words = set(stopwords.words('english'))
     pattern = r'[^A-Za-z ]+'
-    chunk_size = 10000
+    chunk_size = 1000
     filtered_words = []
     new_entries = []
     latest_doc_id = load_latest_doc_id()
