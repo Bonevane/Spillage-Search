@@ -37,10 +37,11 @@ def load_forward_index(file_name):
 
 # Save forward index to a file
 def save_forward_index(forward_index, file_name):
-    with open(file_name, mode='w', newline='', encoding='utf-8') as file:
+    with open(file_name, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         # Write the header
-        writer.writerow(['DocID', 'WordIDs', 'Frequencies', 'Positions', 'Sources'])
+        if os.stat(file_name).st_size == 0:
+            writer.writerow(['DocID', 'WordIDs', 'Frequencies', 'Positions', 'Sources'])
         for doc_id, word_data in forward_index.items():
             # Extract WordIDs, Frequencies, Positions, and Sources
             word_ids = list(word_data.keys())
@@ -59,6 +60,10 @@ def update_forward_index(dataset_file, lexicon_file, output_file):
     
     # Get existing DocIDs to avoid reprocessing
     existing_doc_ids = set(forward_index.keys())
+    
+    batch_forward_index = defaultdict(lambda: defaultdict(lambda: {"frequency": 0, "positions": [], "sources": []}))
+    chunk_size = 1000
+    batch_count = 0
 
     # Read dataset and process documents
     with open(dataset_file, mode='r', encoding='utf-8') as file:
@@ -121,16 +126,23 @@ def update_forward_index(dataset_file, lexicon_file, output_file):
             current_position += len(authors_tokens)
 
             # Process each token for the current document
-            forward_index[doc_id] = defaultdict(lambda: {"frequency": 0, "positions": [], "sources": []})
+            batch_forward_index[doc_id] = defaultdict(lambda: {"frequency": 0, "positions": [], "sources": []})
             for position, (token, source) in enumerate(zip(combined_tokens, sources)):
                 word_id = lexicon.get(token)  # Get the word ID from the lexicon
                 if word_id is not None:  # Skip tokens not in the lexicon
-                    if word_id not in forward_index[doc_id]:
-                        forward_index[doc_id][word_id] = {"frequency": 0, "positions": [], "sources": []}
-                    forward_index[doc_id][word_id]["frequency"] += 1
-                    forward_index[doc_id][word_id]["positions"].append(position)
-                    forward_index[doc_id][word_id]["sources"].append(source)
+                    if word_id not in batch_forward_index[doc_id]:
+                        batch_forward_index[doc_id][word_id] = {"frequency": 0, "positions": [], "sources": []}
+                    batch_forward_index[doc_id][word_id]["frequency"] += 1
+                    batch_forward_index[doc_id][word_id]["positions"].append(position)
+                    batch_forward_index[doc_id][word_id]["sources"].append(source)
+            
+            if doc_id % chunk_size == 0:
+                save_forward_index(batch_forward_index, output_file)
+                batch_forward_index.clear()
+                batch_count += 1
+                print(f"Batch {batch_count} saved.")
 
-    # Save the updated forward index
-    save_forward_index(forward_index, output_file)
-    print("Forward index with sources has been updated or created.")
+    if batch_forward_index:
+        # Save the updated forward index
+        save_forward_index(forward_index, output_file)
+        print("Forward index with sources has been updated or created.")
