@@ -51,7 +51,7 @@ def save_inverted_index(inverted_index, file_name):
 
 def update_inverted_index(forward_index_file, inverted_index_file):
     # Load the forward index
-    forward_index = load_forward_index(forward_index_file)
+    forward_index, _ = load_forward_index(forward_index_file)
 
     # Load the existing inverted index
     inverted_index = load_inverted_index(inverted_index_file)
