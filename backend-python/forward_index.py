@@ -7,6 +7,7 @@ import re
 import csv
 import os
 import nltk
+import ast
 
 nltk.download('punkt')      # For word tokenization
 nltk.download('stopwords')  # If using stop words
@@ -24,10 +25,10 @@ def load_forward_index(file_name):
             csv_reader = csv.DictReader(file)
             for row in csv_reader:
                 doc_id = int(row['DocID'])
-                word_ids = eval(row['WordIDs'])  # Convert string to list
-                frequencies = eval(row['Frequencies'])
-                positions = eval(row['Positions'])
-                sources = eval(row['Sources'])  # New Sources column
+                word_ids = ast.literal_eval(row['WordIDs'])  # Convert string to list
+                frequencies = ast.literal_eval(row['Frequencies'])
+                positions = ast.literal_eval(row['Positions'])
+                sources = ast.literal_eval(row['Sources'])  # New Sources column
                 for word_id, frequency, position_list, source_list in zip(word_ids, frequencies, positions, sources):
                     forward_index[doc_id][word_id]["frequency"] = frequency
                     forward_index[doc_id][word_id]["positions"] = position_list
@@ -73,9 +74,16 @@ def update_forward_index(dataset_file, lexicon_file, output_file):
                 [preprocess_word(token) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', '', paragraph))]
                 for paragraph in row['text'].split("\n")
             ]
-            tags_tokens = [preprocess_word(token) for tag in eval(row['tags']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', '', tag))]
-            authors_tokens = [preprocess_word(token) for author in eval(row['authors']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', '', author))]
-
+            
+            # A lil error error handling because the dataset is not clean yet (after around 1200ish entries it goes haywire in the articles dataset)
+            try:
+                tags_tokens = [preprocess_word(token) for tag in ast.literal_eval(row['tags']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', '', tag))]
+                authors_tokens = [preprocess_word(token) for author in ast.literal_eval(row['authors']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', '', author))]
+            except (ValueError, SyntaxError):
+                print(f"Skipping row due to invalid tags format: {row['tags']}")
+                tags_tokens = []
+                authors_tokens = []
+            
             # Set boundaries for each section
             title_end = len(title_tokens)
             text_end = title_end + sum(len(paragraph) for paragraph in text_tokens)
