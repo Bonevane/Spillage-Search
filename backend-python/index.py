@@ -83,6 +83,8 @@ def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_en
     text_tokens = [w for w in text_tokens if w.lower() not in stop_words and len(w) > 2]
     
     # Handle potential errors in tags and authors fields (json.loads would've been better)
+    tags_tokens = []
+    authors_tokens = []
     try:
         tags_tokens = [preprocess_word(token) for tag in ast.literal_eval(row['tags']) for token in word_tokenize(re.sub(pattern, ' ', tag))]
         authors_tokens = [preprocess_word(token) for author in ast.literal_eval(row['authors']) for token in word_tokenize(re.sub(pattern, ' ', author))]
