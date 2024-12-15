@@ -39,6 +39,7 @@ def load_lexicon(lexicon_file):
     return lexicon
 
 
+# Adding any new entries to the lexicon file
 def save_words_to_lexicon(lexicon_dict, new_entries, latest_id):
     # Append new entries to the CSV
     with open(lexicon_file, mode='a', newline='', encoding='utf-8') as file:

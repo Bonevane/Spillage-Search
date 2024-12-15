@@ -4,6 +4,7 @@ import struct
 from forward_index import load_forward_barrel
 from config import inverted_index_folder
 
+# Function to save a particular inverted barrel to file
 def save_inverted_barrel(inverted_barrel, file_name):
     with open(file_name, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
@@ -27,13 +28,14 @@ def save_inverted_barrel(inverted_barrel, file_name):
         writer.writerows(inverted_entries)
 
 
-
+# Function to create inverted barrel from a forward barrel
 def update_inverted_barrel(forward_barrel_file, inverted_barrel_file):
     os.makedirs(inverted_index_folder, exist_ok=True)
-    # Load the forward index
+    
+    # Load the forward barrel
     forward_barrel = load_forward_barrel(forward_barrel_file)
 
-    # Load the existing inverted index
+    # Initialization
     inverted_barrel = {}
     
     for doc_id in forward_barrel:
@@ -47,7 +49,7 @@ def update_inverted_barrel(forward_barrel_file, inverted_barrel_file):
     save_inverted_barrel(inverted_barrel, inverted_barrel_file)
     print(f"Inverted barrel {inverted_barrel_file} has been updated and saved.")
 
-
+# Offsets stored in a binary file to access a row in constant time
 def create_offsets(inverted_index_folder, barrel_number):
     offsets = []
     with open(inverted_index_folder + f'/inverted_{barrel_number}.csv', mode='r', encoding='utf-8') as file:
@@ -64,6 +66,7 @@ def create_offsets(inverted_index_folder, barrel_number):
             offset_file.write(struct.pack('Q', offset))
 
 
+# Loading the offsets into memory
 def load_offsets(file_name):
     offsets = []
     with open(file_name, mode='rb') as offset_file:

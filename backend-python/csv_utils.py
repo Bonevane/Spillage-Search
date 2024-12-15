@@ -2,6 +2,10 @@ import csv
 import os
 from config import id_file, doc_id_file, processed_file
 
+#
+#   ALL TO DO WITH REMEMBERING THE LATEST IDS AND WHAT FILES HAVE BEEN PROCESSED
+#
+
 def load_latest_id():
     # Read the latest ID from the file
     if os.path.exists(id_file):
@@ -43,7 +47,7 @@ def load_processed_entries():
     if os.path.exists(processed_file):
         with open(processed_file, mode='r', encoding='utf-8') as file:
             reader = csv.reader(file)
-            next(reader, None)  # Skip the header
+            next(reader, None)
             for row in reader:
                 processed_set.add(tuple(row[1:]))
     return processed_set
