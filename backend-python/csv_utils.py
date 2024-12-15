@@ -1,8 +1,19 @@
 import csv
 import os
 
+def load_latest_id():
+    id_file = 'indices/latest_id.txt'
+
+    # Read the latest ID from the file
+    if os.path.exists(id_file):
+        with open(id_file, 'r') as file:
+            latest_id = int(file.read().strip())
+    else:
+        latest_id = 0
+    return latest_id
+
 def load_latest_doc_id():
-    doc_id_file = 'latest_doc_id.txt'
+    doc_id_file = 'indices/latest_doc_id.txt'
     if os.path.exists(doc_id_file):
         with open(doc_id_file, 'r') as file:
             latest_doc_id = int(file.read().strip())
@@ -11,8 +22,8 @@ def load_latest_doc_id():
     return latest_doc_id
 
 def save_processed_docs(new_entries, latest_doc_id):
-    processed_file = 'processed.csv'
-    doc_id_file = 'latest_doc_id.txt'
+    processed_file = 'indices/processed.csv'
+    doc_id_file = 'indices/latest_doc_id.txt'
 
     # Append new entries to the CSV
     with open(processed_file, mode='a', newline='', encoding='utf-8') as file:
@@ -26,7 +37,7 @@ def save_processed_docs(new_entries, latest_doc_id):
         file.write(str(latest_doc_id))
 
 def load_processed_entries():
-    processed_file = 'processed.csv'
+    processed_file = 'indices/processed.csv'
     processed_set = set()
 
     if os.path.exists(processed_file):

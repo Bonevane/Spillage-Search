@@ -3,7 +3,7 @@ import csv
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from csv_utils import load_latest_doc_id, save_processed_docs, load_processed_entries
+from csv_utils import load_latest_id, load_latest_doc_id, save_processed_docs, load_processed_entries
 import re
 import nltk
 
@@ -16,7 +16,24 @@ nltk.download('wordnet')
 lemmatizer = WordNetLemmatizer()
 
 def preprocess_word(word):
-    return lemmatizer.lemmatize(word.lower())
+    word = word.lower()
+    lemmatized_word = lemmatizer.lemmatize(word, pos="v")
+    if lemmatized_word != word:
+        return lemmatized_word
+
+    # Try lemmatizing as noun
+    lemmatized_word = lemmatizer.lemmatize(word, pos="n")
+    if lemmatized_word != word:
+        return lemmatized_word
+
+    # Try lemmatizing as adjective
+    lemmatized_word = lemmatizer.lemmatize(word, pos="a")
+    if lemmatized_word != word:
+        return lemmatized_word
+
+    # Try lemmatizing as adverb
+    lemmatized_word = lemmatizer.lemmatize(word, pos="r")
+    return lemmatized_word
 
 # Load lexicon
 def load_lexicon(lexicon_file):
@@ -30,24 +47,9 @@ def load_lexicon(lexicon_file):
     print("Lexicon Loaded!")
     return lexicon
 
-def save_words_to_lexicon(filtered_words, lexicon_dict):
-    lexicon_file = 'lexicon.csv'
-    id_file = 'latest_id.txt'
-
-    # Read the latest ID from the file
-    if os.path.exists(id_file):
-        with open(id_file, 'r') as file:
-            latest_id = int(file.read().strip())
-    else:
-        latest_id = 0
-
-    # Add new words to the lexicon
-    new_entries = []
-    for word in filtered_words:
-        if word not in lexicon_dict:
-            latest_id += 1
-            lexicon_dict[word] = latest_id
-            new_entries.append([latest_id, word])
+def save_words_to_lexicon(lexicon_dict, new_entries, latest_id):
+    lexicon_file = 'indices/lexicon.csv'
+    id_file = 'indices/latest_id.txt'
 
     # Append new entries to the CSV
     with open(lexicon_file, mode='a', newline='', encoding='utf-8') as file:
@@ -60,12 +62,14 @@ def save_words_to_lexicon(filtered_words, lexicon_dict):
     with open(id_file, 'w') as file:
         file.write(str(latest_id))
 
-    print("Words have been saved to the lexicon.")
 
 
+
+
+# Obsolete Code
 def create_and_update_lexicon(csv_filename, lexicon_file):
     stop_words = set(stopwords.words('english'))
-    pattern = r'[^A-Za-z ]+'
+    pattern = r'[^A-Za-z0-9 ]+'
     chunk_size = 1000
     filtered_words = []
     new_entries = []

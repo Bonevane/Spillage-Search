@@ -8,10 +8,11 @@ import csv
 import os
 import nltk
 import ast
+import json
 
-nltk.download('punkt')      # For word tokenization
-nltk.download('stopwords')  # If using stop words
-nltk.download('wordnet')  
+# nltk.download('punkt')      # For word tokenization
+# nltk.download('stopwords')  # If using stop words
+# nltk.download('wordnet')  
 
 # Initialize lemmatizer and stopwords
 lemmatizer = WordNetLemmatizer()
@@ -19,20 +20,18 @@ stop_words = set(stopwords.words('english'))
 
 # Load existing forward index from a file
 def load_forward_index(file_name):
-    forward_index = defaultdict(lambda: defaultdict(lambda: {"frequency": 0, "positions": [], "sources": []}))
+    forward_index = {}
     if os.path.exists(file_name):
         with open(file_name, mode='r', encoding='utf-8') as file:
             csv_reader = csv.DictReader(file)
             for row in csv_reader:
                 doc_id = int(row['DocID'])
-                word_ids = ast.literal_eval(row['WordIDs'])  # Convert string to list
-                frequencies = ast.literal_eval(row['Frequencies'])
-                positions = ast.literal_eval(row['Positions'])
-                sources = ast.literal_eval(row['Sources'])  # New Sources column
-                for word_id, frequency, position_list, source_list in zip(word_ids, frequencies, positions, sources):
-                    forward_index[doc_id][word_id]["frequency"] = frequency
-                    forward_index[doc_id][word_id]["positions"] = position_list
-                    forward_index[doc_id][word_id]["sources"] = source_list
+                word_ids = json.loads(row['WordIDs'])  # Convert string to list
+                frequencies = json.loads(row['Frequencies'])
+                positions = json.loads(row['Positions'])
+                sources = re.sub('\'', '"', row['Sources'])
+                sources = json.loads(sources)  # New Sources column
+                forward_index[doc_id] = [word_ids, frequencies, positions, sources]
     return forward_index
 
 # Save forward index to a file
@@ -51,6 +50,11 @@ def save_forward_index(forward_index, file_name):
             # Write the row
             writer.writerow([doc_id, word_ids, frequencies, positions, sources])
 
+
+
+
+
+# Obsolete Code
 def update_forward_index(dataset_file, lexicon_file, output_file):
     # Load lexicon
     lexicon = load_lexicon(lexicon_file)
