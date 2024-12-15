@@ -10,38 +10,43 @@ import re
 import nltk
 import ast
 
+barrel_size = 1001
+
 # Save forward index to a file
-def save_forward_index(forward_index, file_name):
-    with open(file_name, mode='a', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        # Write the header
-        if os.stat(file_name).st_size == 0:
-            writer.writerow(['DocID', 'WordIDs', 'Frequencies', 'Positions', 'Sources'])
-        
-        forward_entries = []
-        for doc_id, word_data in forward_index.items():
-            # Extract WordIDs, Frequencies, Positions, and Sources
-            word_ids = list(word_data.keys())
-            frequencies = [data['frequency'] for data in word_data.values()]
-            positions = [data['positions'] for data in word_data.values()]
-            sources = [data['sources'] for data in word_data.values()]
-            forward_entries.append([doc_id, word_ids, frequencies, positions, sources])
+def save_forward_index(forward_index, folder_name):
+    os.makedirs(folder_name, exist_ok=True)
+    for barrel in range(len(forward_index)):
+        file_name = folder_name + f"/forward_{barrel}.csv"
+        with open(file_name, mode='a', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            # Write the header
+            if os.stat(file_name).st_size == 0:
+                writer.writerow(['DocID', 'WordIDs', 'Frequencies', 'Positions', 'Sources'])
             
-        writer.writerows(forward_entries)
+            forward_entries = []
+            for doc_id, word_data in forward_index[barrel].items():
+                # Extract WordIDs, Frequencies, Positions, and Sources
+                word_ids = list(word_data.keys())
+                frequencies = [data['frequency'] for data in word_data.values()]
+                positions = [data['positions'] for data in word_data.values()]
+                sources = [data['sources'] for data in word_data.values()]
+                forward_entries.append([doc_id, word_ids, frequencies, positions, sources])
+                
+            writer.writerows(forward_entries)
 
 
 def iterate_dataset(dataset_file, lexicon_file):
     stop_words = set(stopwords.words('english'))
     processed_set = load_processed_entries()
     lexicon = load_lexicon(lexicon_file)
-    output_file = 'indices/forward_index.csv'
+    output_file = 'indices/forward'
     latest_doc_id = load_latest_doc_id()
     latest_id = load_latest_id()
     batch_size = 1000
     
     with open(dataset_file, mode='r', encoding='utf-8') as file:
         csv_reader = csv.DictReader(file)
-        forward_entries = defaultdict(lambda: defaultdict(lambda: {"frequency": 0, "positions": [], "sources": []}))
+        forward_entries = []
         lexicon_entries = []
         
         for row in csv_reader:
@@ -91,8 +96,6 @@ def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_en
         authors_tokens = [preprocess_word(token) for author in ast.literal_eval(row['authors']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', ' ', author))]
     except (ValueError, SyntaxError):
         print(f"Skipping row due to invalid tags format: {row['tags']}")
-    tags_tokens = []
-    authors_tokens = []
     tags_tokens = [w for w in tags_tokens if w.lower() not in stop_words and len(w) > 2]
     authors_tokens = [w for w in authors_tokens if w.lower() not in stop_words and len(w) > 2]
 
@@ -127,19 +130,27 @@ def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_en
 
     latest_doc_id += 1
     # Process each token for the current document
-    forward_entries[latest_doc_id] = defaultdict(lambda: {"frequency": 0, "positions": [], "sources": []})
     for position, (token, source) in enumerate(zip(combined_tokens, sources)):
         if token not in lexicon:
             latest_id += 1
             lexicon[token] = latest_id
             lexicon_entries.append([latest_id, token])
         word_id = lexicon.get(token)  # Get the word ID from the lexicon
+        
+        barrel = word_id // barrel_size
+        
+        if len(forward_entries) < barrel + 1:
+            forward_entries.extend([{} for i in range(barrel - len(forward_entries) + 1)])
+        try:
+            forward_entries[barrel][latest_doc_id]
+        except KeyError:
+            forward_entries[barrel][latest_doc_id] = {}
         if word_id is not None:  # Skip tokens not in the lexicon
-            if word_id not in forward_entries[latest_doc_id]:
-                forward_entries[latest_doc_id][word_id] = {"frequency": 0, "positions": [], "sources": []}
-            forward_entries[latest_doc_id][word_id]["frequency"] += 1
-            forward_entries[latest_doc_id][word_id]["positions"].append(position)
-            forward_entries[latest_doc_id][word_id]["sources"].append(source)
+            if word_id not in forward_entries[barrel][latest_doc_id]:
+                forward_entries[barrel][latest_doc_id][word_id] = {"frequency": 0, "positions": [], "sources": []}
+            forward_entries[barrel][latest_doc_id][word_id]["frequency"] += 1
+            forward_entries[barrel][latest_doc_id][word_id]["positions"].append(position)
+            forward_entries[barrel][latest_doc_id][word_id]["sources"].append(source)
 
     combined_tokens = list(dict.fromkeys(combined_tokens))
     

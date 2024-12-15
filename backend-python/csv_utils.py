@@ -22,6 +22,7 @@ def load_latest_doc_id():
     return latest_doc_id
 
 def save_processed_docs(new_entries, latest_doc_id):
+    os.makedirs("indices", exist_ok=True)
     processed_file = 'indices/processed.csv'
     doc_id_file = 'indices/latest_doc_id.txt'
 
