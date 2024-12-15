@@ -1,7 +1,9 @@
 *.csv
 
+test.py
+
 __pycache__/
 
 backup/
 
-indices/
+indexes/

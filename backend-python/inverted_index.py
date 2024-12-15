@@ -1,29 +1,8 @@
 import csv
 import os
-import ast
-from collections import defaultdict
-from forward_index import load_forward_barrel
-import json
-import re
 import struct
-
-# Load existing inverted index if it exists
-def load_inverted_index(file_name):
-    csv.field_size_limit(10_000_000)
-
-    inverted_index = {}
-    if os.path.exists(file_name):
-        with open(file_name, mode='r', encoding='utf-8') as file:
-            csv_reader = csv.DictReader(file)
-            for row in csv_reader:
-                word_id = int(row['WordID'])
-                doc_ids = json.loads(row['DocIDs'])  # Convert string to list
-                frequencies = json.loads(row['Frequencies'])
-                positions = json.loads(row['Positions'])
-                sources = re.sub('\'', '"', row['Sources'])
-                sources = json.loads(sources)  # New Sources column
-                inverted_index[word_id] = [doc_ids, frequencies, positions, sources]
-    return inverted_index
+from forward_index import load_forward_barrel
+from config import inverted_index_folder
 
 def save_inverted_barrel(inverted_barrel, file_name):
     with open(file_name, mode='w', newline='', encoding='utf-8') as file:
@@ -48,14 +27,14 @@ def save_inverted_barrel(inverted_barrel, file_name):
         writer.writerows(inverted_entries)
 
 
+
 def update_inverted_barrel(forward_barrel_file, inverted_barrel_file):
-    os.makedirs('indices/inverted', exist_ok=True)
+    os.makedirs(inverted_index_folder, exist_ok=True)
     # Load the forward index
     forward_barrel = load_forward_barrel(forward_barrel_file)
 
     # Load the existing inverted index
     inverted_barrel = {}
-    print("LOADED")
     
     for doc_id in forward_barrel:
         for i in range(len(forward_barrel[doc_id][0])):
@@ -67,7 +46,8 @@ def update_inverted_barrel(forward_barrel_file, inverted_barrel_file):
     # Save only new data to the CSV file
     save_inverted_barrel(inverted_barrel, inverted_barrel_file)
     print(f"Inverted barrel {inverted_barrel_file} has been updated and saved.")
-    
+
+
 def create_offsets(inverted_index_folder, barrel_number):
     offsets = []
     with open(inverted_index_folder + f'/inverted_{barrel_number}.csv', mode='r', encoding='utf-8') as file:
@@ -81,13 +61,14 @@ def create_offsets(inverted_index_folder, barrel_number):
     # Save offsets to a binary file
     with open(inverted_index_folder + f'/inverted_{barrel_number}.bin', mode='wb') as offset_file:
         for offset in offsets:
-            offset_file.write(struct.pack('Q', offset))  # 'Q' is for unsigned long long (8 bytes)
-    
+            offset_file.write(struct.pack('Q', offset))
+
+
 def load_offsets(file_name):
     offsets = []
     with open(file_name, mode='rb') as offset_file:
         while True:
-            bytes_read = offset_file.read(8)  # Read 8 bytes (size of 'Q')
+            bytes_read = offset_file.read(8)
             if not bytes_read:
                 break
             offsets.append(struct.unpack('Q', bytes_read)[0])

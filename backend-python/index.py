@@ -1,48 +1,23 @@
-import os
 import csv
-from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from csv_utils import load_latest_id, load_latest_doc_id, save_processed_docs, load_processed_entries
 from lexicon_utils import load_lexicon, preprocess_word, save_words_to_lexicon
-from collections import defaultdict
+from forward_index import save_forward_index
+from inverted_index import update_inverted_barrel, create_offsets
+from config import forward_index_folder, inverted_index_folder
 import re
-import nltk
 import ast
+import os
 
 barrel_size = 1001
-
-# Save forward index to a file
-def save_forward_index(forward_index, folder_name):
-    os.makedirs(folder_name, exist_ok=True)
-    for barrel in range(len(forward_index)):
-        file_name = folder_name + f"/forward_{barrel}.csv"
-        with open(file_name, mode='a', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            # Write the header
-            if os.stat(file_name).st_size == 0:
-                writer.writerow(['DocID', 'WordIDs', 'Frequencies', 'Positions', 'Sources'])
-            
-            forward_entries = []
-            for doc_id, word_data in forward_index[barrel].items():
-                # Extract WordIDs, Frequencies, Positions, and Sources
-                word_ids = list(word_data.keys())
-                frequencies = [data['frequency'] for data in word_data.values()]
-                positions = [data['positions'] for data in word_data.values()]
-                sources = [data['sources'] for data in word_data.values()]
-                forward_entries.append([doc_id, word_ids, frequencies, positions, sources])
-                
-            writer.writerows(forward_entries)
-
 
 def iterate_dataset(dataset_file, lexicon_file):
     stop_words = set(stopwords.words('english'))
     processed_set = load_processed_entries()
     lexicon = load_lexicon(lexicon_file)
-    output_file = 'indices/forward'
     latest_doc_id = load_latest_doc_id()
     latest_id = load_latest_id()
-    batch_size = 1000
     
     with open(dataset_file, mode='r', encoding='utf-8') as file:
         csv_reader = csv.DictReader(file)
@@ -59,17 +34,17 @@ def iterate_dataset(dataset_file, lexicon_file):
             processed_set.add(current_entry)
             save_processed_docs([[latest_doc_id, row['title'], row['url'], row['authors'], row['timestamp'], row['tags']]], latest_doc_id)
             
-            if latest_doc_id % batch_size == 0:
+            if latest_doc_id % barrel_size == 0:
                 save_words_to_lexicon(lexicon, lexicon_entries, latest_id)
-                save_forward_index(forward_entries, output_file)
+                save_forward_index(forward_entries, forward_index_folder)
                 lexicon_entries.clear()
                 forward_entries.clear()
-                print(f"Writing batch {latest_doc_id - batch_size} to {latest_doc_id}...")
+                print(f"Writing batch {latest_doc_id - barrel_size} to {latest_doc_id}...")
         
         if forward_entries:
             save_words_to_lexicon(lexicon, lexicon_entries, latest_id)
-            save_forward_index(forward_entries, output_file)
-            print(f"Writing batch {latest_doc_id - (latest_doc_id % batch_size)} to {latest_doc_id}...")
+            save_forward_index(forward_entries, forward_index_folder)
+            print(f"Writing batch {latest_doc_id - (latest_doc_id % barrel_size)} to {latest_doc_id}...")
 
 
 def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_entries, forward_entries):
@@ -77,8 +52,6 @@ def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_en
     combined_tokens = []
     new_entries = []
     new_doc_entries = []
-    
-    batch_count = 0
     
     # Process individual fields with lemmatization
     title_tokens = [preprocess_word(token) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', ' ', row['title']))]
@@ -94,7 +67,7 @@ def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_en
     try:
         tags_tokens = [preprocess_word(token) for tag in ast.literal_eval(row['tags']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', ' ', tag))]
         authors_tokens = [preprocess_word(token) for author in ast.literal_eval(row['authors']) for token in word_tokenize(re.sub(r'[^A-Za-z ]+', ' ', author))]
-    except (ValueError, SyntaxError):
+    except (ValueError, SyntaxError):   
         print(f"Skipping row due to invalid tags format: {row['tags']}")
     tags_tokens = [w for w in tags_tokens if w.lower() not in stop_words and len(w) > 2]
     authors_tokens = [w for w in authors_tokens if w.lower() not in stop_words and len(w) > 2]
@@ -154,7 +127,16 @@ def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_en
 
     combined_tokens = list(dict.fromkeys(combined_tokens))
     
-    batch_count += 1
-    #print(f"Batch {batch_count} saved.")
-    
     return latest_id, latest_doc_id
+
+
+def create_inverted_index():
+    barrel = 0
+    while True:
+        if os.path.isfile(forward_index_folder + f'/forward_{barrel}.csv'):
+            print(f"Creating inverted barrel {barrel}...")
+            update_inverted_barrel(forward_index_folder + f'/forward_{barrel}.csv', inverted_index_folder + f'/inverted_{barrel}.csv')
+            create_offsets(inverted_index_folder, barrel)
+            barrel += 1
+        else:
+            break
