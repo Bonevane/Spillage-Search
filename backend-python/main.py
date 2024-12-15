@@ -1,13 +1,12 @@
-from lexicon_utils import create_and_update_lexicon
-from forward_index import update_forward_index
-from inverted_index import update_inverted_index
+from config import lexicon_file, csv_file
+from index import iterate_dataset, create_inverted_index
+import time as t
 
-# Run the program
-csv_file = "1000_dataset.csv"
-lexicon_file = "lexicon.csv"
-forward_index_file = 'forward_index.csv'
-inverted_index_file = 'inverted_index.csv'
+# Iterating the dataset, then making the inverted index!!!!!!!!!!!
+a = t.time()
+iterate_dataset(csv_file, lexicon_file)
+print(t.time() - a)
 
-create_and_update_lexicon(csv_file, lexicon_file)
-update_forward_index(csv_file, lexicon_file, forward_index_file)
-update_inverted_index(forward_index_file, inverted_index_file)
+b = t.time()
+create_inverted_index()
+print(t.time() - b)

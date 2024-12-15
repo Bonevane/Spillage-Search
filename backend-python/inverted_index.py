@@ -1,71 +1,78 @@
 import csv
 import os
-import ast
-from collections import defaultdict
-from forward_index import load_forward_index
+import struct
+from forward_index import load_forward_barrel
+from config import inverted_index_folder
 
-# Load existing inverted index if it exists
-def load_inverted_index(file_name):
-    inverted_index = defaultdict(lambda: {"doc_ids": [], "frequencies": [], "positions": [], "sources": []})
-    if os.path.exists(file_name):
-        with open(file_name, mode='r', encoding='utf-8') as file:
-            csv_reader = csv.DictReader(file)
-            for row in csv_reader:
-                word_id = int(row['WordID'])
-                doc_ids = ast.literal_eval(row['DocIDs'])
-                frequencies = ast.literal_eval(row['Frequencies'])
-                positions = ast.literal_eval(row['Positions'])
-                sources = ast.literal_eval(row['Sources'])
-                inverted_index[word_id]["doc_ids"] = doc_ids
-                inverted_index[word_id]["frequencies"] = frequencies
-                inverted_index[word_id]["positions"] = positions
-                inverted_index[word_id]["sources"] = sources
-    return inverted_index
-
-def save_inverted_index(inverted_index, file_name):
-    # Load existing WordIDs to avoid duplicate entries
-    existing_word_ids = set()
-    if os.path.exists(file_name):
-        with open(file_name, mode='r', encoding='utf-8') as file:
-            csv_reader = csv.DictReader(file)
-            for row in csv_reader:
-                existing_word_ids.add(int(row['WordID']))
-    
-    # Open the file in append mode
-    with open(file_name, mode='a', newline='', encoding='utf-8') as file:
+# Function to save a particular inverted barrel to file
+def save_inverted_barrel(inverted_barrel, file_name):
+    with open(file_name, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         
         if os.stat(file_name).st_size == 0:  # Check if file is empty
             writer.writerow(['WordID', 'DocIDs', 'Frequencies', 'Positions', 'Sources'])
+                
+        inverted_entries = []
+        for word_id in list(inverted_barrel.keys()):
+            doc_ids = list(inverted_barrel[word_id].keys())
+            frequencies = []
+            positions = []
+            sources = []
+            for doc_id in doc_ids:
+                frequencies.append(inverted_barrel[word_id][doc_id][0])
+                positions.append(inverted_barrel[word_id][doc_id][1])
+                sources.append(inverted_barrel[word_id][doc_id][2])
+            inverted_entries.append([word_id, doc_ids, frequencies, positions, sources])
+            del inverted_barrel[word_id]
+            
+        writer.writerows(inverted_entries)
 
-        # Append new WordIDs
-        for word_id, data in inverted_index.items():
-            if word_id not in existing_word_ids:  # Skip if WordID already exists
-                writer.writerow([
-                    word_id,
-                    data["doc_ids"],
-                    data["frequencies"],
-                    data["positions"],
-                    data["sources"]
-                ])
 
-def update_inverted_index(forward_index_file, inverted_index_file):
-    # Load the forward index
-    forward_index, _ = load_forward_index(forward_index_file)
+# Function to create inverted barrel from a forward barrel
+def update_inverted_barrel(forward_barrel_file, inverted_barrel_file):
+    os.makedirs(inverted_index_folder, exist_ok=True)
+    
+    # Load the forward barrel
+    forward_barrel = load_forward_barrel(forward_barrel_file)
 
-    # Load the existing inverted index
-    inverted_index = load_inverted_index(inverted_index_file)
-
-    # Iterate over each document in the forward index
-    for doc_id, word_data in forward_index.items():
-        # For each word in the document, update the inverted index
-        for word_id, data in word_data.items():
-            if doc_id not in inverted_index[word_id]["doc_ids"]:
-                inverted_index[word_id]["doc_ids"].append(doc_id)
-                inverted_index[word_id]["frequencies"].append(data["frequency"])
-                inverted_index[word_id]["positions"].append(data["positions"])
-                inverted_index[word_id]["sources"].append(data["sources"])
+    # Initialization
+    inverted_barrel = {}
+    
+    for doc_id in forward_barrel:
+        for i in range(len(forward_barrel[doc_id][0])):
+            word_id = forward_barrel[doc_id][0][i]
+            if word_id not in inverted_barrel:
+                inverted_barrel[word_id] = {}
+            inverted_barrel[word_id][doc_id] = [forward_barrel[doc_id][1][i], forward_barrel[doc_id][2][i], forward_barrel[doc_id][3][i]]
     
     # Save only new data to the CSV file
-    save_inverted_index(inverted_index, inverted_index_file)
-    print("Inverted index has been updated and saved.")
+    save_inverted_barrel(inverted_barrel, inverted_barrel_file)
+    print(f"Inverted barrel {inverted_barrel_file} has been updated and saved.")
+
+# Offsets stored in a binary file to access a row in constant time
+def create_offsets(inverted_index_folder, barrel_number):
+    offsets = []
+    with open(inverted_index_folder + f'/inverted_{barrel_number}.csv', mode='r', encoding='utf-8') as file:
+        while True:
+            offset = file.tell()
+            line = file.readline()
+            if not line:
+                break
+            offsets.append(offset)
+
+    # Save offsets to a binary file
+    with open(inverted_index_folder + f'/inverted_{barrel_number}.bin', mode='wb') as offset_file:
+        for offset in offsets:
+            offset_file.write(struct.pack('Q', offset))
+
+
+# Loading the offsets into memory
+def load_offsets(file_name):
+    offsets = []
+    with open(file_name, mode='rb') as offset_file:
+        while True:
+            bytes_read = offset_file.read(8)
+            if not bytes_read:
+                break
+            offsets.append(struct.unpack('Q', bytes_read)[0])
+    return offsets
