@@ -1,5 +1,5 @@
 # File locations
-csv_file = "test.csv"
+csv_file = "datasets/1000_dataset.csv"
 lexicon_file = "indexes/lexicon.csv"
 forward_index_folder = 'indexes/forward'
 inverted_index_folder = 'indexes/inverted'
