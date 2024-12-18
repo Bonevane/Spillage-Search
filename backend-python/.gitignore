@@ -1,6 +1,7 @@
 *.csv
+*.npy
 
-test.py
+test*.py
 
 __pycache__/
 
@@ -9,3 +10,4 @@ backup/
 indexes/
 
 datasets/
+

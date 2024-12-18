@@ -1,5 +1,7 @@
 import csv
 import os
+import json
+import re
 from config import id_file, doc_id_file, processed_file
 
 #
@@ -51,3 +53,21 @@ def load_processed_entries():
             for row in reader:
                 processed_set.add(tuple(row[1:]))
     return processed_set
+
+
+def load_processed_to_dict(file_path):
+    data_dict = {}
+    with open(file_path, 'r', encoding='utf-8') as csv_file:
+        csv_reader = csv.DictReader(csv_file)  # Read rows as dictionaries
+        for row in csv_reader:
+            row_id = int(row['ID'])  # Use the 'ID' column as the key
+            tags = re.sub('\'', '"', row['tags'])
+            data_dict[row_id] = {
+                'title': row['title'],
+                'url': row['url'],
+                'authors': row['authors'],
+                'timestamp': row['timestamp'],
+                'tags': json.loads(tags)
+            }
+    print("Processed data loaded!")
+    return data_dict
