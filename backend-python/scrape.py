@@ -30,9 +30,11 @@ def preprocess_word(word):
     """
     # Lemmatize the word (context-aware)
     lemmatized_word = lemmatizer.lemmatize(word.lower())
+
     # Stem the word (handle suffix removal)
     stemmed_word = stemmer.stem(lemmatized_word)
     return stemmed_word
+    return lemmatized_word
 
 def save_words_to_lexicon(filtered_words):
     lexicon_file = 'lexicon.csv'
