@@ -1,0 +1,16 @@
+# flyctl launch added from .gitignore
+**\*.csv
+**\*.npy
+
+**\test*.py
+
+**\__pycache__
+
+**\backup
+
+**\indexes
+
+**\datasets
+
+**\service_account.json
+fly.toml

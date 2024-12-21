@@ -3,11 +3,16 @@ from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2.service_account import Credentials
 import os
 import io
+import json
 
 # Authenticate and create the Drive API client
 def authenticate_drive():
     SCOPES = ['https://www.googleapis.com/auth/drive']
-    creds = Credentials.from_service_account_file('service_account.json', scopes=SCOPES)
+    service_account_info = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if not service_account_info:
+        raise ValueError("Service account credentials not found in environment variable.")
+    creds_dict = json.loads(service_account_info)
+    creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     return build('drive', 'v3', credentials=creds)
 
 # List files in a folder
