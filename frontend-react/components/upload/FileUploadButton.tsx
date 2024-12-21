@@ -28,7 +28,17 @@ export default function FileUploadButton({ onUpload, mode }: FileUploadButtonPro
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      onUpload(data);
+
+      // Validate JSON structure
+      const requiredKeys = ['title', 'text', 'url', 'authors', 'timestamp', 'tags'];
+      const isValid = requiredKeys.every(key => key in data);
+
+      if (!isValid) {
+        setError('Invalid JSON structure. Please ensure the file contains title, text, url, authors, timestamp, and tags.');
+        return;
+      }
+
+      onUpload(file);
     } catch (err) {
       setError('Invalid JSON file');
     }

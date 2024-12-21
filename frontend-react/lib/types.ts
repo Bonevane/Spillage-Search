@@ -6,4 +6,5 @@ export interface SearchResult {
   url: string;
   tags: string[];
   date: string;
+  member: string;
 }

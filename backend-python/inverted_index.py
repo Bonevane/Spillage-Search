@@ -49,6 +49,8 @@ def update_inverted_barrel(forward_barrel_file, inverted_barrel_file):
     save_inverted_barrel(inverted_barrel, inverted_barrel_file)
     print(f"Inverted barrel {inverted_barrel_file} has been updated and saved.")
 
+
+
 # Offsets stored in a binary file to access a row in constant time
 def create_offsets(inverted_index_folder, barrel_number):
     offsets = []

@@ -1,10 +1,12 @@
 import csv
 import os
+import json
+import re
 from config import id_file, doc_id_file, processed_file
 
 #
 #   ALL TO DO WITH REMEMBERING THE LATEST IDS AND WHAT FILES HAVE BEEN PROCESSED
-#
+#  
 
 def load_latest_id():
     # Read the latest ID from the file
@@ -51,3 +53,61 @@ def load_processed_entries():
             for row in reader:
                 processed_set.add(tuple(row[1:]))
     return processed_set
+
+
+def load_processed_to_dict(file_path):
+    data_dict = {}
+    with open(file_path, 'r', encoding='utf-8') as csv_file:
+        csv_reader = csv.DictReader(csv_file)  # Read rows as dictionaries
+        for row in csv_reader:
+            row_id = int(row['ID'])  # Use the 'ID' column as the key
+            tags = re.sub('\'', '"', row['tags'])
+            try:
+                data_dict[row_id] = {
+                    'title': row['title'],
+                    'url': row['url'],
+                    'authors': row['authors'],
+                    'timestamp': row['timestamp'],
+                    'tags': json.loads(tags)
+                }
+            except:
+                print("Error in tags")
+    print("Processed data loaded!")
+    return data_dict
+
+def load_scrapped_to_dict(file_path):
+    data_dict = {}
+    with open(file_path, 'r', encoding='utf-8') as csv_file:
+        csv_reader = csv.DictReader(csv_file)  # Read rows as dictionaries 
+        for row in csv_reader:
+            row_id = int(row['ID'])  # Use the 'ID' column as the key
+            data_dict[row_id] = {
+                'url': row['URL'],
+                'description': row['Description'],
+                'member only': row['Member Only'],
+                'code': row['Code']
+            }
+    print("Scrapped data loaded!")
+    return data_dict
+
+def calculate_lengths():
+    with open('datasets/medium_articles.csv', 'r', encoding='utf-8') as infile, \
+        open('indexes/lengths.csv', 'w', newline='', encoding='utf-8') as outfile:
+        reader = csv.DictReader(infile)
+        writer = csv.DictWriter(outfile, fieldnames=['ID', 'length'])
+        writer.writeheader()
+        for idx, row in enumerate(reader, start=1):
+            text = row.get('text', '')
+            word_count = len(text.split())
+            writer.writerow({'ID': idx, 'length': word_count})
+            print(f"Processed {idx} rows.")
+
+def load_lengths(file_path):
+    data_dict = {}
+    with open(file_path, 'r', encoding='utf-8') as csv_file:
+        csv_reader = csv.DictReader(csv_file)  # Read rows as dictionaries
+        for row in csv_reader:
+            row_id = int(row['ID'])  # Use the 'ID' column as the key
+            data_dict[row_id] = int(row['length'])
+    print("Lengths data loaded!")
+    return data_dict
