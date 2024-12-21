@@ -30,9 +30,8 @@ import torch
 app = FastAPI()
 
 # Loading transformer model and vocab embeddings
-# model = SentenceTransformer('all-MiniLM-L6-v2')
-vocab_embeddings = np.load("embeddings.npy")
-print("Model and embeddings loaded successfully.")
+# vocab_embeddings = np.load("embeddings.npy")
+# print("Model and embeddings loaded successfully.")
 
 # Loading lexicon, processed data, scrapped data and lengths data
 lexicon = load_lexicon(lexicon_file)
@@ -281,7 +280,8 @@ def search_documents(request: QueryRequest):
     if not query:
         return results
     
-    top_words_list = get_top_words_from_query(query)
+    # top_words_list = get_top_words_from_query(query)
+    top_words_list = query
 
     threads = []
     for word in top_words_list:

@@ -26,7 +26,6 @@ export default function SearchControls({
           initialValue={initialValue}
         />
       </div>
-      <FileUploadButton onUpload={onFileUpload} mode={mode} />
       {mode === 'google' && <SignInButton />}
     </div>
   );
