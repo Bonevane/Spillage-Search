@@ -15,6 +15,7 @@ from inverted_index import load_offsets
 from index import iterate_dataset, create_inverted_index
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
 from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths
+from drive import main
 
 import threading
 import struct
@@ -29,6 +30,7 @@ import torch
 import uvicorn
 
 app = FastAPI()
+main()
 
 # port = int(os.getenv("PORT", 8000))
 # uvicorn.run(app, host="0.0.0.0", port=port)
