@@ -3,6 +3,8 @@ import os
 import json
 import re
 from config import id_file, doc_id_file, processed_file
+from sentence_transformers import SentenceTransformer, util
+import numpy as np
 
 #
 #   ALL TO DO WITH REMEMBERING THE LATEST IDS AND WHAT FILES HAVE BEEN PROCESSED
@@ -111,3 +113,4 @@ def load_lengths(file_path):
             data_dict[row_id] = int(row['length'])
     print("Lengths data loaded!")
     return data_dict
+

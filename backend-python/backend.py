@@ -24,11 +24,13 @@ import re
 import io
 import os
 import math
+import time as t
+import torch
 
 app = FastAPI()
 
 # Loading transformer model and vocab embeddings
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# model = SentenceTransformer('all-MiniLM-L6-v2')
 vocab_embeddings = np.load("embeddings.npy")
 print("Model and embeddings loaded successfully.")
 
@@ -74,8 +76,6 @@ class SearchResult(BaseModel):
     tags: List[str]
     date: str
     member: str
-
-
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -181,14 +181,29 @@ def calculate_bm25_scores(item, sorted_list, query_word_ids, intersection):
             score *= 3
         
         if "T" in source: 
-            score *= 5
+            score *= 10
         if "A" in source:
-            score *= 10
+            score *= 12
         if "Ta" in source:
-            score *= 10
+            score *= 8
         
         sorted_list.add((score, doc_id))
 
+def get_top_words_from_query(query):
+    all_top_words = []
+    query_embeddings = []
+    for word in query:
+        word_id = lexicon[word]
+        query_embeddings.append(vocab_embeddings[word_id - 1])
+
+    similarities = util.cos_sim(query_embeddings, vocab_embeddings)  # shape: (len(query), len(vocab))
+    
+    for idx, q_word in enumerate(query):
+        row = similarities[idx]
+        top_values, top_indices = torch.topk(row, 5)
+        all_top_words.extend([vocab[i] for i in top_indices])
+        
+    return all_top_words
 
 def find_intersection(inverted_data, query_word_ids):    
     if not query_word_ids:
@@ -207,24 +222,6 @@ def find_intersection(inverted_data, query_word_ids):
             doc_ids &= set(inverted_data[word_id]['doc_ids'])
     
     return doc_ids
-
-def get_top_words_from_query(query):
-    all_top_words = []
-    # Encode all query words at once
-    query_embeddings = model.encode(query)  # 'query' is a list of preprocessed words
-    # Compute similarities between query embeddings and all vocabulary embeddings
-    similarities = util.cos_sim(query_embeddings, vocab_embeddings)  # Shape: (len(query), len(vocab))
-    # Iterate over each query word and its similarity vector
-    for idx, q_word in enumerate(query):
-        similarity_row = similarities[idx]
-        # Get the indices of the top 5 similar words (excluding the query word itself)
-        top_indices = similarity_row.argsort(descending=True)[:5]
-        # Retrieve the top words and their similarity scores
-        top_words = [(vocab[i], similarity_row[i].item()) for i in top_indices]
-        all_top_words.append((q_word, top_words))
-        
-    top_words_list = [word for _, top_words in all_top_words for word, _ in top_words]
-    return top_words_list
 
 
 def make_results(sorted_list, results):
@@ -247,9 +244,8 @@ def make_results(sorted_list, results):
             member = scrapped_dict[int(doc_ids)]['member only']
             if member == "Unknown":
                 continue
-            print(scrapped_dict[int(doc_ids)]['member only'])
         except (Exception):
-            print(f'Description not found for {doc_ids}')
+            pass
         
         results.append({
             "id": doc_ids,
@@ -261,7 +257,6 @@ def make_results(sorted_list, results):
             "date": processed_data['timestamp'],
             "member" : member
         })
-        print(score)
         
         counter += 1  # Increment the counter
         if counter >= 30:
@@ -270,6 +265,7 @@ def make_results(sorted_list, results):
 
 @app.post("/search", response_model=List[SearchResult])
 def search_documents(request: QueryRequest):
+    a = t.time()
     query = request.query.lower()
 
     results = []
@@ -297,7 +293,6 @@ def search_documents(request: QueryRequest):
     for thread in threads:
         thread.join()
 
-    print(inverted_data)
     intersection = find_intersection(inverted_data, query_word_ids)
     
     bm25_threads = []
@@ -311,5 +306,6 @@ def search_documents(request: QueryRequest):
         thread.join()
 
     make_results(sorted_list, results)
+    print(f"Displaying {len(results)} of {sum(len(data['doc_ids']) for data in inverted_data.values())} results in {t.time() - a} seconds.")
     
     return results
