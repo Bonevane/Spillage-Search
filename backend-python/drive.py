@@ -72,6 +72,3 @@ def main():
             download_file(drive_service, file['id'], file_name, output_dir, mime_type)
         except Exception as e:
             print(f"Error downloading file {file['name']}: {e}")
-
-
-

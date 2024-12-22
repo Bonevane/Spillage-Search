@@ -6,6 +6,11 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
+COPY indexes/lexicon.csv /app/indexes/lexicon.csv
+COPY indexes/processed.csv /app/indexes/processed.csv
+COPY indexes/lengths.csv /app/indexes/lengths.csv
+COPY indexes/scraped.csv /app/indexes/scraped.csv
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
