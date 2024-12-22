@@ -25,7 +25,7 @@ export default function SearchContainer() {
     setError(null); // Reset error state
 
     try {
-      const response = await fetch("https://66.241.125.220:8000/search", {
+      const response = await fetch("https://66.241.125.220:8000/.fly/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
