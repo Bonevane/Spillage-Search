@@ -160,7 +160,7 @@ export default function SearchContainer() {
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
                   <TagIcon size={20} className="text-gray-500 flex-shrink-0" />
                   <div className="flex gap-2 flex-wrap">
-                    {mockTags.map((tag) => (
+                    {tags.map((tag) => (
                       <button
                         key={tag}
                         className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors whitespace-nowrap"
