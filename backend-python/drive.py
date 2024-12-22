@@ -57,7 +57,7 @@ def download_file(drive_service, file_id, file_name, output_dir, mime_type=None)
 
 # Main function with MIME type mapping
 def main():
-    folder_id = '1501ty8RjYMMkTJg7TMnuRZyQ2_2yz0Lv'  # Replace with your Google Drive folder ID
+    folder_id = '19rscw8unKR6Gk76nGIVDV0LCnZvHhU09'  # Replace with your Google Drive folder ID
     output_dir = 'indexes/inverted/'  # Replace with your desired download directory
 
     if not os.path.exists(output_dir):

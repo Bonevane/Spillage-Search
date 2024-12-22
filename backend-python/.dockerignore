@@ -8,8 +8,15 @@
 **\backup
 
 **\indexes\forward
-**\indexes\inverted
-
+**\indexes\inverted\inverted_0.csv
+**\indexes\inverted\inverted_1.csv
+**\indexes\inverted\inverted_2.csv
+**\indexes\inverted\inverted_3.csv
+**\indexes\inverted\inverted_4.csv
+**\indexes\inverted\inverted_5.csv
+**\indexes\inverted\inverted_6.csv
+**\indexes\inverted\inverted_7.csv
+**\indexes\inverted\inverted_8.csv
 
 **\datasets
 
