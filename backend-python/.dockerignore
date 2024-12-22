@@ -1,5 +1,4 @@
 # flyctl launch added from .gitignore
-**\*.csv
 **\*.npy
 
 **\test*.py
@@ -8,7 +7,9 @@
 
 **\backup
 
-**\indexes
+**\indexes\forward
+**\indexes\inverted
+
 
 **\datasets
 
