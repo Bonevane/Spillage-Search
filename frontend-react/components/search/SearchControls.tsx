@@ -26,7 +26,10 @@ export default function SearchControls({
           initialValue={initialValue}
         />
       </div>
-      {mode === 'google' && <SignInButton />}
+      {mode === 'google' && 
+      <div className="hidden md:block">
+          <SignInButton />
+        </div>}
     </div>
   );
 }

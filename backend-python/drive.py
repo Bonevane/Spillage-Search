@@ -20,8 +20,24 @@ def authenticate_drive():
 # List files in a folder
 def list_files_in_folder(drive_service, folder_id):
     query = f"'{folder_id}' in parents and trashed = false"
-    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
-    return results.get('files', [])
+    files = []
+    page_token = None
+
+    while True:
+        response = drive_service.files().list(
+            q=query,
+            spaces='drive',
+            fields='nextPageToken, files(id, name)',
+            pageToken=page_token
+        ).execute()
+
+        files.extend(response.get('files', []))
+        page_token = response.get('nextPageToken', None)
+
+        if not page_token:
+            break
+
+    return files
 
 # Download a file or export if it's a Google Docs file
 def download_file(drive_service, file_id, file_name, output_dir, mime_type=None):
@@ -56,6 +72,8 @@ def main():
         'application/vnd.google-apps.spreadsheet': 'text/csv',  # CSV
         'application/vnd.google-apps.presentation': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',  # PPTX
     }
+    
+    print(f"Total number of files: {len(files)}")
 
     for file in files:
         print(f"Found file: {file['name']} (ID: {file['id']})")

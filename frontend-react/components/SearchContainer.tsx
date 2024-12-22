@@ -97,12 +97,19 @@ export default function SearchContainer() {
         searchQuery === "" ? "pt-32" : ""
       )}
     >
-      <div className="mx-auto px-4 py-8">
+      <div className="mx-auto px-4 py-4 md:py-8 max-w-7xl">
         {/* Logo and Search Controls Layout */}
         <div
           className={cn(
-            "flex items-center transition-all duration-300",
-            searchQuery ? (searchMode === "google" ? "gap-8" : "justify-center") : "flex-col gap-8"
+            "flex",
+            searchQuery 
+              ? "gap-4 md:gap-8 flex-col md:flex-row items-center transition-all duration-300" 
+              : "gap-6 md:gap-8 flex-col items-center transition-all duration-300",
+            searchQuery && searchMode === "google" 
+              ? "md:flex-row" 
+              : searchQuery 
+                ? "items-center" 
+                : "items-center"
           )}
         >
           <div
@@ -124,7 +131,7 @@ export default function SearchContainer() {
                 )}
           </div>
 
-          <div className={cn("transition-all duration-300 flex-1 w-1/2")}>
+          <div className={cn("transition-all duration-300 w-full")}>
             <SearchControls
               onSearch={handleSearch}
               onFileUpload={handleFileUpload}
@@ -138,11 +145,11 @@ export default function SearchContainer() {
         {searchQuery && (
           <>
             {searchMode === "google" && <GoogleTabs />}
-            <div className="mt-8">
-              <div className="flex items-center justify-between mb-6">
+            <div className="mt-6 md:mt-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-4">
                   <select
-                    className="px-3 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full md:w-auto px-3 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as "relevancy" | "date")}
                   >
@@ -150,13 +157,13 @@ export default function SearchContainer() {
                     <option value="date">Sort by Date</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2">
-                  <TagIcon size={20} className="text-gray-500" />
-                  <div className="flex gap-2">
-                    {tags.map((tag) => (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                  <TagIcon size={20} className="text-gray-500 flex-shrink-0" />
+                  <div className="flex gap-2 flex-wrap">
+                    {mockTags.map((tag) => (
                       <button
                         key={tag}
-                        className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                        className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors whitespace-nowrap"
                       >
                         {tag}
                       </button>
@@ -166,14 +173,26 @@ export default function SearchContainer() {
               </div>
 
               {/* Show loading, error, or results */}
-              {loading && <p>Loading...</p>}
-              {error && <p className="text-red-500">{error}</p>}
-              {!loading && !error && results.length > 0 && (
-                <SearchResults results={results} mode={searchMode} />
-              )}
-              {!loading && !error && results.length === 0 && (
-                <p>No results found. Try a different query.</p>
-              )}
+              <div className="min-h-[200px]">
+                {loading && (
+                  <div className="flex items-center justify-center">
+                    <p className="text-gray-600">Loading...</p>
+                  </div>
+                )}
+                {error && (
+                  <div className="flex items-center justify-center">
+                    <p className="text-red-500">{error}</p>
+                  </div>
+                )}
+                {!loading && !error && results.length > 0 && (
+                  <SearchResults results={results} mode={searchMode} />
+                )}
+                {!loading && !error && results.length === 0 && (
+                  <div className="flex items-center justify-center">
+                    <p className="text-gray-600">No results found. Try a different query.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
