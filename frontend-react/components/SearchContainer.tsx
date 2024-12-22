@@ -25,7 +25,7 @@ export default function SearchContainer() {
     setError(null); // Reset error state
 
     try {
-      const response = await fetch("https://66.241.125.220/.fly/api/search", {
+      const response = await fetch("https://spillage-search-floral-morning-2392.fly.dev:8000/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
