@@ -15,6 +15,7 @@ from inverted_index import load_offsets
 from index import iterate_dataset, create_inverted_index
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
 from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths
+from downloads import download_nltk_resources
 from drive import main
 
 import threading
@@ -30,6 +31,7 @@ import torch
 import uvicorn
 
 app = FastAPI()
+download_nltk_resources()
 main()
 
 # port = int(os.getenv("PORT", 8000))
