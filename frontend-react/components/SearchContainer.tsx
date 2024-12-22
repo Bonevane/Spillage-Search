@@ -13,8 +13,9 @@ import SearchResults from "./SearchResults";
 export default function SearchContainer() {
   const [searchMode, setSearchMode] = useState<"spillage" | "google">("spillage");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"relevancy" | "date">("relevancy");
+  const [sortBy, setSortBy] = useState<"relevancy" | "date-new" | "date-old">("relevancy");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [sortedResults, setSortedResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false); // Loading state
   const [error, setError] = useState<string | null>(null); // Error state
   const [tags, setTags] = useState<string[]>([]);
@@ -39,6 +40,7 @@ export default function SearchContainer() {
 
       const data: SearchResult[] = await response.json();
       setResults(data); // Update results with fetched data
+      setSortedResults(data);
       console.log("API Response:", data); // Log the response to debug
 
       const extractedTags = data.map(result => result.tags?.[0]).filter(tag => tag);
@@ -84,6 +86,27 @@ export default function SearchContainer() {
       setError("Failed to upload file. Please try again.");
     } finally {
       setLoading(false); // Stop loading
+    }
+  };
+
+  const handleSortChange = (newSortBy: 'relevancy' | 'date-new' | 'date-old') => {
+    setSortBy(newSortBy);
+    if (results.length > 0) {
+      const tempResults = [...results];
+      if (newSortBy === 'date-new') {
+        tempResults.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } else if (newSortBy === 'date-old') {
+        tempResults.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }
+      else {
+        // For relevancy, use the original order of mockResults
+        tempResults.sort((a, b) => {
+          const aIndex = sortedResults.findIndex(r => r.id === a.id);
+          const bIndex = sortedResults.findIndex(r => r.id === b.id);
+          return aIndex - bIndex;
+        });
+      }
+      setResults(tempResults);
     }
   };
 
@@ -151,10 +174,11 @@ export default function SearchContainer() {
                   <select
                     className="w-full md:w-auto px-3 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as "relevancy" | "date")}
+                    onChange={(e) => handleSortChange(e.target.value as "relevancy" | "date-new" | "date-old")}
                   >
                     <option value="relevancy">Sort by Relevancy</option>
-                    <option value="date">Sort by Date</option>
+                    <option value="date-new">Sort by Date {"(New)"}</option>
+                    <option value="date-old">Sort by Date {"(Old)"}</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
