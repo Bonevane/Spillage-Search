@@ -13,18 +13,18 @@ const tabs = [
 
 export default function GoogleTabs() {
   return (
-    <div className="pt-2 border-b border-gray-200">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-6 text-sm">
+    <div className="pt-2 border-b border-gray-200 overflow-x-auto">
+      <div className="max-w-6xl mx-auto min-w-max">
+        <div className="flex items-center gap-2 md:gap-6 text-sm">
           {tabs.map((tab) => (
             <button
               key={tab.label}
               className={cn(
-                "flex items-center gap-1 px-4 py-3 text-gray-600 border-b-2 hover:text-blue-600 hover:border-blue-600",
+                "flex items-center gap-1 px-3 md:px-4 py-3 text-gray-600 border-b-2 hover:text-blue-600 hover:border-blue-600 whitespace-nowrap",
                 tab.active ? "text-blue-600 border-blue-600" : "border-transparent"
               )}
             >
-              <tab.icon size={16} />
+              <tab.icon size={16} className="hidden md:block" />
               {tab.label}
             </button>
           ))}

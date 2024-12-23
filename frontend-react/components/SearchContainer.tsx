@@ -13,8 +13,9 @@ import SearchResults from "./SearchResults";
 export default function SearchContainer() {
   const [searchMode, setSearchMode] = useState<"spillage" | "google">("spillage");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"relevancy" | "date">("relevancy");
+  const [sortBy, setSortBy] = useState<"relevancy" | "date-new" | "date-old">("relevancy");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [sortedResults, setSortedResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false); // Loading state
   const [error, setError] = useState<string | null>(null); // Error state
   const [tags, setTags] = useState<string[]>([]);
@@ -39,6 +40,7 @@ export default function SearchContainer() {
 
       const data: SearchResult[] = await response.json();
       setResults(data); // Update results with fetched data
+      setSortedResults(data);
       console.log("API Response:", data); // Log the response to debug
 
       const extractedTags = data.map(result => result.tags?.[0]).filter(tag => tag);
@@ -87,6 +89,27 @@ export default function SearchContainer() {
     }
   };
 
+  const handleSortChange = (newSortBy: 'relevancy' | 'date-new' | 'date-old') => {
+    setSortBy(newSortBy);
+    if (results.length > 0) {
+      const tempResults = [...results];
+      if (newSortBy === 'date-new') {
+        tempResults.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } else if (newSortBy === 'date-old') {
+        tempResults.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }
+      else {
+        // For relevancy, use the original order of mockResults
+        tempResults.sort((a, b) => {
+          const aIndex = sortedResults.findIndex(r => r.id === a.id);
+          const bIndex = sortedResults.findIndex(r => r.id === b.id);
+          return aIndex - bIndex;
+        });
+      }
+      setResults(tempResults);
+    }
+  };
+
   const mockTags = ["Programming", "Technology", "Design", "AI", "Web Development"];
 
   return (
@@ -97,12 +120,19 @@ export default function SearchContainer() {
         searchQuery === "" ? "pt-32" : ""
       )}
     >
-      <div className="mx-auto px-4 py-8">
+      <div className="mx-auto px-4 py-4 md:py-8 max-w-7xl">
         {/* Logo and Search Controls Layout */}
         <div
           className={cn(
-            "flex items-center transition-all duration-300",
-            searchQuery ? (searchMode === "google" ? "gap-8" : "justify-center") : "flex-col gap-8"
+            "flex",
+            searchQuery 
+              ? "gap-4 md:gap-8 flex-col md:flex-row items-center transition-all duration-300" 
+              : "gap-6 md:gap-8 flex-col items-center transition-all duration-300",
+            searchQuery && searchMode === "google" 
+              ? "md:flex-row" 
+              : searchQuery 
+                ? "items-center" 
+                : "items-center"
           )}
         >
           <div
@@ -124,7 +154,7 @@ export default function SearchContainer() {
                 )}
           </div>
 
-          <div className={cn("transition-all duration-300 flex-1 w-1/2")}>
+          <div className={cn("transition-all duration-300 w-full")}>
             <SearchControls
               onSearch={handleSearch}
               onFileUpload={handleFileUpload}
@@ -138,25 +168,26 @@ export default function SearchContainer() {
         {searchQuery && (
           <>
             {searchMode === "google" && <GoogleTabs />}
-            <div className="mt-8">
-              <div className="flex items-center justify-between mb-6">
+            <div className="mt-6 md:mt-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-4">
                   <select
-                    className="px-3 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full md:w-auto px-3 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as "relevancy" | "date")}
+                    onChange={(e) => handleSortChange(e.target.value as "relevancy" | "date-new" | "date-old")}
                   >
                     <option value="relevancy">Sort by Relevancy</option>
-                    <option value="date">Sort by Date</option>
+                    <option value="date-new">Sort by Date {"(New)"}</option>
+                    <option value="date-old">Sort by Date {"(Old)"}</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2">
-                  <TagIcon size={20} className="text-gray-500" />
-                  <div className="flex gap-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                  <TagIcon size={20} className="text-gray-500 flex-shrink-0" />
+                  <div className="flex gap-2 flex-wrap">
                     {tags.map((tag) => (
                       <button
                         key={tag}
-                        className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                        className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors whitespace-nowrap"
                       >
                         {tag}
                       </button>
@@ -166,14 +197,26 @@ export default function SearchContainer() {
               </div>
 
               {/* Show loading, error, or results */}
-              {loading && <p>Loading...</p>}
-              {error && <p className="text-red-500">{error}</p>}
-              {!loading && !error && results.length > 0 && (
-                <SearchResults results={results} mode={searchMode} />
-              )}
-              {!loading && !error && results.length === 0 && (
-                <p>No results found. Try a different query.</p>
-              )}
+              <div className="min-h-[200px]">
+                {loading && (
+                  <div className="flex items-center justify-center">
+                    <p className="text-gray-600">Loading...</p>
+                  </div>
+                )}
+                {error && (
+                  <div className="flex items-center justify-center">
+                    <p className="text-red-500">{error}</p>
+                  </div>
+                )}
+                {!loading && !error && results.length > 0 && (
+                  <SearchResults results={results} mode={searchMode} />
+                )}
+                {!loading && !error && results.length === 0 && (
+                  <div className="flex items-center justify-center">
+                    <p className="text-gray-600">No results found. Try a different query.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}

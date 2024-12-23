@@ -27,7 +27,10 @@ export default function SearchControls({
         />
       </div>
       <FileUploadButton onUpload={onFileUpload} mode={mode} />
-      {mode === 'google' && <SignInButton />}
+      {mode === 'google' && 
+      <div className="hidden md:block">
+          <SignInButton />
+        </div>}
     </div>
   );
 }
