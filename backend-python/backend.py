@@ -34,13 +34,6 @@ app = FastAPI()
 download_nltk_resources()
 main()
 
-# port = int(os.getenv("PORT", 8000))
-# uvicorn.run(app, host="0.0.0.0", port=port)
-
-# Loading transformer model and vocab embeddings
-# vocab_embeddings = np.load("embeddings.npy")
-# print("Model and embeddings loaded successfully.")
-
 # Loading lexicon, processed data, scrapped data and lengths data
 lexicon = load_lexicon(lexicon_file)
 vocab = list(lexicon.keys())
@@ -50,7 +43,12 @@ lengths_dict = load_lengths(lengths_file)
 
 k = 1.5
 b = 0.75
-N = 192000
+N = len(processed_dict)
+WORD_IN_QUERY_VAR = 3
+INTERSECTION_VAR = 10
+TITLE_VAR = 10
+AUTHOR_VAR = 12
+TAG_VAR = 8
 avgdl = sum(lengths_dict.values()) / N
 
 # Loading lemmatizer and intializing it (For some reason it takes too long to lemmatize the first time)
@@ -182,17 +180,17 @@ def calculate_bm25_scores(item, sorted_list, query_word_ids, intersection):
         score = TF * IDF * 100
         
         if doc_id in intersection:
-            score *= 10
+            score *= INTERSECTION_VAR
         
         if word_id in query_word_ids:
-            score *= 3
+            score *= WORD_IN_QUERY_VAR
         
         if "T" in source: 
-            score *= 10
+            score *= TITLE_VAR
         if "A" in source:
-            score *= 12
+            score *= AUTHOR_VAR
         if "Ta" in source:
-            score *= 8
+            score *= TAG_VAR
         
         sorted_list.add((score, doc_id))
 
