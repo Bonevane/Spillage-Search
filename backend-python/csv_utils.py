@@ -62,16 +62,17 @@ def load_processed_to_dict(file_path):
         for row in csv_reader:
             row_id = int(row['ID'])  # Use the 'ID' column as the key
             tags = re.sub('\'', '"', row['tags'])
+            authors = re.sub('\'', '"', row['authors'])
             try:
                 data_dict[row_id] = {
                     'title': row['title'],
                     'url': row['url'],
-                    'authors': row['authors'],
+                    'authors': json.loads(authors),
                     'timestamp': row['timestamp'],
                     'tags': json.loads(tags)
                 }
             except:
-                print("Error in tags")
+                pass
     print("Processed data loaded!")
     return data_dict
 

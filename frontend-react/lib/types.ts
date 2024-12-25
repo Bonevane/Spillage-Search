@@ -5,6 +5,7 @@ export interface SearchResult {
   thumbnail: string;
   url: string;
   tags: string[];
+  authors: string[];
   date: string;
   member: string;
 }

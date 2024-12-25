@@ -46,8 +46,9 @@ b = 0.75
 N = len(processed_dict)
 WORD_IN_QUERY_VAR = 3
 INTERSECTION_VAR = 10
-TITLE_VAR = 10
-AUTHOR_VAR = 12
+TITLE_CONTAINS_QUERY_VAR = 100
+TITLE_VAR = 12
+AUTHOR_VAR = 6
 TAG_VAR = 8
 avgdl = sum(lengths_dict.values()) / N
 
@@ -79,6 +80,7 @@ class SearchResult(BaseModel):
     thumbnail: str
     url: str
     tags: List[str]
+    authors: List[str]
     date: str
     member: str
 
@@ -259,6 +261,7 @@ def make_results(sorted_list, results):
             "thumbnail": thumbnail,
             "url": processed_data['url'],
             "tags": processed_data['tags'],
+            "authors": processed_data['authors'],
             "date": processed_data['timestamp'],
             "member" : member
         })
