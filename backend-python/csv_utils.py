@@ -72,7 +72,13 @@ def load_processed_to_dict(file_path):
                     'tags': json.loads(tags)
                 }
             except:
-                pass
+                data_dict[row_id] = {
+                    'title': row['title'],
+                    'url': row['url'],
+                    'authors': [],
+                    'timestamp': row['timestamp'],
+                    'tags': json.loads(tags)
+                }
     print("Processed data loaded!")
     return data_dict
 

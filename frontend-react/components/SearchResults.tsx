@@ -28,7 +28,7 @@ export default function SearchResults({ results, mode }: SearchResultsProps) {
         >
           <div className={cn("flex flex-col md:flex-row gap-4", mode === 'google' && "flex-col")}>
             {mode === 'spillage' && (
-              <div className="relative w-full md:w-48 h-auto md:h-auto flex-shrink-0">
+              <div className="relative w-full md:w-48 h-48 md:h-auto flex-shrink-0">
                 <Image
                   src={result.thumbnail}
                   alt={' '}

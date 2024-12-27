@@ -178,6 +178,72 @@ def update_csv(input_filename, processed_file, output_filename):
     except Exception as e:
         print(f"Error updating CSV: {e}")
 
+
+
+def get_article_details(url):
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to retrieve article. Status code: {response.status_code}")
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Extract the title
+    authors_tags = soup.find_all('a', {'rel': 'author'})
+    authors = [author.get_text() for author in authors_tags] if authors_tags else []
+
+    if not title_tag:
+        raise Exception(f"Failed to retrieve article. Status code: {response.status_code}")
+
+    # Extract the authors
+    authors_tags = soup.find_all('a', {'rel': 'author'})
+    authors = [author.get_text() for author in authors_tags] if authors_tags else ["No authors found"]
+
+    # Extract the text content
+    article_text = []
+    paragraphs = soup.find_all('p')
+    for p in paragraphs:
+        article_text.append(p.get_text())
+    text = "\n".join(article_text) if article_text else "No text content found"
+
+    # Extract tags
+    tags = []
+    tag_elements = soup.find_all('a', {'class': 'link--primary'})
+    for tag in tag_elements:
+        tags.append(tag.get_text())
+    tags = tags[:5]
+
+    # Extract the timestamp
+    timestamp_tag = soup.find('time')
+    timestamp = timestamp_tag.get_text() if timestamp_tag else "No timestamp found"
+
+    return {
+        'title': title,
+        'text': text,
+        'url': url,
+        'authors': authors,
+        'timestamp': timestamp,
+        'tags': tags
+    }
+
+def save_article_to_csv(article_details, filename='received.csv'):
+    header = ['title', 'text', 'url', 'authors', 'timestamp', 'tags']
+
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=header)
+        if file.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            'title': article_details['title'],
+            'text': article_details['text'],
+            'url': article_details['url'],
+            'authors': ', '.join(article_details['authors']),
+            'timestamp': article_details['timestamp'],
+            'tags': ', '.join(article_details['tags'])
+        })
+
+
+
+
 # Main function
 def main():
     input_filename = "indexes/processed.csv"  # Input CSV file with header ID, title, url, authors, timestamp, tags
@@ -186,7 +252,7 @@ def main():
 
     # Read data from the input CSV
     articles = read_from_csv(input_filename)
-        
+    
     latest_article_id = int(update_csv(output_filename, input_filename, output_filename))
     
     for i in range(latest_article_id, len(articles) - 6, 5):
