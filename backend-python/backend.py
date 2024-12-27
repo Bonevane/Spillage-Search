@@ -259,7 +259,7 @@ def search_documents(request: QueryRequest):
     query_word_ids = [lexicon[word] for word in query if word in lexicon]
     
     if not query:
-        return results
+        return {"results": [], "count": 0, "time": t.time() - a}
     
     top_words_list = get_top_words_from_query(query)
     # top_words_list = query
