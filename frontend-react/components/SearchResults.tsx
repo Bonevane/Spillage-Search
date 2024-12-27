@@ -28,7 +28,7 @@ export default function SearchResults({ results, mode }: SearchResultsProps) {
         >
           <div className={cn("flex flex-col md:flex-row gap-4", mode === 'google' && "flex-col")}>
             {mode === 'spillage' && (
-              <div className="relative w-full md:w-48 h-48 md:h-32 flex-shrink-0">
+              <div className="relative w-full md:w-48 h-48 md:h-auto flex-shrink-0">
                 <Image
                   src={result.thumbnail}
                   alt={' '}
@@ -64,6 +64,14 @@ export default function SearchResults({ results, mode }: SearchResultsProps) {
                 <div className="flex items-center gap-2 min-w-0">
                   <TagIcon size={16} className="text-gray-400 flex-shrink-0" />
                   <div className="flex gap-2 overflow-x-auto">
+                    {result.authors.map((author) => (
+                      <span
+                        key={author}
+                        className="text-sm text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap"
+                      >
+                        #{author}
+                      </span>
+                    ))}
                     {result.tags.map((tag) => (
                       <span
                         key={tag}

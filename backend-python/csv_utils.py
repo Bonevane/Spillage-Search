@@ -3,8 +3,6 @@ import os
 import json
 import re
 from config import id_file, doc_id_file, processed_file
-from sentence_transformers import SentenceTransformer, util
-import numpy as np
 
 #
 #   ALL TO DO WITH REMEMBERING THE LATEST IDS AND WHAT FILES HAVE BEEN PROCESSED
@@ -64,16 +62,23 @@ def load_processed_to_dict(file_path):
         for row in csv_reader:
             row_id = int(row['ID'])  # Use the 'ID' column as the key
             tags = re.sub('\'', '"', row['tags'])
+            authors = re.sub('\'', '"', row['authors'])
             try:
                 data_dict[row_id] = {
                     'title': row['title'],
                     'url': row['url'],
-                    'authors': row['authors'],
+                    'authors': json.loads(authors),
                     'timestamp': row['timestamp'],
                     'tags': json.loads(tags)
                 }
             except:
-                print("Error in tags")
+                data_dict[row_id] = {
+                    'title': row['title'],
+                    'url': row['url'],
+                    'authors': [],
+                    'timestamp': row['timestamp'],
+                    'tags': json.loads(tags)
+                }
     print("Processed data loaded!")
     return data_dict
 
@@ -113,4 +118,3 @@ def load_lengths(file_path):
             data_dict[row_id] = int(row['length'])
     print("Lengths data loaded!")
     return data_dict
-

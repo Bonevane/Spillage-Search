@@ -1,24 +1,27 @@
 "use client";
 
 import SearchBar from '../SearchBar';
-import FileUploadButton from '../upload/FileUploadButton';
 import SignInButton from './SignInButton';
 
 interface SearchControlsProps {
   onSearch: (query: string) => void;
   onFileUpload: (data: any) => void;
+  onUrlUpload: (url: string) => void;
   mode: 'spillage' | 'google';
   initialValue?: string;
+  hasUploaded: boolean;
 }
 
 export default function SearchControls({ 
   onSearch, 
-  onFileUpload, 
+  onFileUpload,
+  onUrlUpload,
   mode, 
-  initialValue 
+  initialValue,
+  hasUploaded
 }: SearchControlsProps) {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2 md:gap-4">
       <div className="flex-1">
         <SearchBar 
           onSearch={onSearch} 
@@ -26,10 +29,11 @@ export default function SearchControls({
           initialValue={initialValue}
         />
       </div>
-      {mode === 'google' && 
-      <div className="hidden md:block">
+      {mode === 'google' && (
+        <div className="hidden md:block">
           <SignInButton />
-        </div>}
+        </div>
+      )}
     </div>
   );
 }
