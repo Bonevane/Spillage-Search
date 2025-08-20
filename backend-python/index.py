@@ -25,7 +25,7 @@ def iterate_dataset(dataset_file, lexicon_file):
     latest_id = load_latest_id()
     
     # Open the dataset file for reading
-    with open(dataset_file, mode='r', encoding='utf-8') as file:
+    with open(dataset_file, mode='r', encoding='utf-8') as file:    
         csv_reader = csv.DictReader(file)
         forward_entries = []
         lexicon_entries = []

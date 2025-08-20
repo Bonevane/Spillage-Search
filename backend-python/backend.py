@@ -9,6 +9,7 @@ from sortedcontainers import SortedList
 import numpy as np
 from pydantic import BaseModel
 from typing import List
+from heapq import nlargest, nsmallest
 
 from lexicon_utils import load_lexicon, preprocess_word
 from inverted_index import load_offsets
@@ -28,6 +29,9 @@ import math
 import time as t
 import torch
 
+from downloads import download_nltk_resources
+
+# download_nltk_resources()
 app = FastAPI()
 is_processing = False
 
@@ -136,7 +140,7 @@ def append_inverted_barrel_data(lexicon, inverted_index_folder, word, data_dict)
         print(f'Error processing word {word}: {e}')
 
 
-def calculate_bm25_scores(item, sorted_list, query_word_ids, intersection):
+def calculate_bm25_scores(item, results_list, query_word_ids, intersection):
     word_id, data = item
     doc_ids = data['doc_ids']
     frequencies = data['frequencies']
@@ -165,7 +169,7 @@ def calculate_bm25_scores(item, sorted_list, query_word_ids, intersection):
         if "Ta" in source:
             score *= TAG_VAR
         
-        sorted_list.add((score, doc_id))
+        results_list.append((score, doc_id))
 
 def get_top_words_from_query(query):
     all_top_words = []
@@ -205,7 +209,7 @@ def find_intersection(inverted_data, query_word_ids):
 def make_results(sorted_list, results):
     counter = 0
     processed_doc_ids = set()
-    for score, doc_ids in sorted_list[::-1]:
+    for score, doc_ids in sorted_list: #[::-1]:
         if doc_ids in processed_doc_ids:
             continue  # Skip duplicate entries
         processed_doc_ids.add(doc_ids)
@@ -241,6 +245,8 @@ def make_results(sorted_list, results):
         if counter >= 100:
             break
 
+def get_top_100_results(score_docid_list):
+    return nlargest(150, score_docid_list, key=lambda x: x[0])
 
 @app.post("/search", response_model=SearchResult)
 def search_documents(request: QueryRequest):
@@ -250,7 +256,7 @@ def search_documents(request: QueryRequest):
     results = []
     bm25_scores = []
     inverted_data = {}
-    sorted_list = SortedList()
+    results_list = []
 
     query = word_tokenize(query)
     query = list(set(query))
@@ -261,9 +267,9 @@ def search_documents(request: QueryRequest):
     if not query:
         return {"results": [], "count": 0, "time": t.time() - a}
     
-    top_words_list = get_top_words_from_query(query)
-    # top_words_list = query
-
+    # top_words_list = get_top_words_from_query(query)
+    top_words_list = query
+    
     threads = []
     for word in top_words_list:
         thread = threading.Thread(target=append_inverted_barrel_data, args=(lexicon, inverted_index_folder, word, inverted_data))
@@ -278,13 +284,14 @@ def search_documents(request: QueryRequest):
     
     bm25_threads = []
     for item in inverted_data.items():
-        thread = threading.Thread(target=calculate_bm25_scores, args=(item, sorted_list, query_word_ids, intersection))
+        thread = threading.Thread(target=calculate_bm25_scores, args=(item, results_list, query_word_ids, intersection))
         bm25_threads.append(thread)
         thread.start()
 
     # Wait for all BM25 threads to complete
     for thread in bm25_threads:
         thread.join()
+    sorted_list = get_top_100_results(results_list)
 
     make_results(sorted_list, results)
     total_results = sum(len(data['doc_ids']) for data in inverted_data.values())
