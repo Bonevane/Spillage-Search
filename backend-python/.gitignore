@@ -1,5 +1,6 @@
 *.csv
 *.npy
+.env
 
 test*.py
 
