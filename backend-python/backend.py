@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from concurrent.futures import ProcessPoolExecutor
+from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk import WordNetLemmatizer
 from sentence_transformers import SentenceTransformer, util
@@ -16,7 +17,6 @@ from inverted_index import load_offsets
 from index import iterate_dataset, create_inverted_index
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
 from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths
-from scrape import get_article_details, save_article_to_csv
 
 import threading
 import struct
@@ -33,12 +33,12 @@ from downloads import download_nltk_resources
 
 # download_nltk_resources()
 app = FastAPI()
-is_processing = False
+upload_lock = threading.Lock()
 
 # Loading transformer model and vocab embeddings
-model = SentenceTransformer('all-MiniLM-L6-v2')
-vocab_embeddings = np.load("embeddings.npy")
-print("Model and embeddings loaded successfully.")
+# model = SentenceTransformer('all-MiniLM-L6-v2')
+# vocab_embeddings = np.load("embeddings.npy")
+# print("Model and embeddings loaded successfully.")
 
 # Loading lexicon, processed data, scrapped data and lengths data
 lexicon = load_lexicon(lexicon_file)
@@ -301,83 +301,46 @@ def search_documents(request: QueryRequest):
 
 
 # UPLOAD APIs
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    global is_processing
 
-    if is_processing:
-        raise HTTPException(status_code=400, detail="A process is already running. Please try again later.")
-    
-    if not file.filename.endswith('.json'):
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a JSON file.")
 
+def threaded_upload(url):
     try:
-        contents = await file.read()
-        data = json.loads(contents)
-        
-        required_keys = ['title', 'text', 'url', 'authors', 'timestamp', 'tags']
-        if not all(key in data for key in required_keys):
-            raise HTTPException(status_code=400, detail="Invalid JSON structure. Missing required keys.")
-        
-        # Convert JSON to CSV
-        output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=required_keys)
-        writer.writeheader()
-        writer.writerow(data)
-        csv_content = output.getvalue()
-        output.close()
-        
-        # Save CSV to a file or pass it to a function
-        with open(received_file, 'w', newline='', encoding='utf-8') as csvfile:
-            csvfile.write(csv_content)
+        from medium_scraper import scrape_and_add_article
+        from update_barrels import add_scraped_article_to_index
 
-        iterate_dataset(received_file, lexicon_file)
+        latest_doc_id = 0
+        doc_id_file = "indexes/latest_doc_id.txt"
+        if os.path.exists(doc_id_file):
+            with open(doc_id_file, 'r') as f:
+                latest_doc_id = int(f.read().strip())
 
-        executor = ProcessPoolExecutor()
-        executor.submit(create_inverted_index)
-        is_processing = True
-        
-        if os.path.exists(received_file):
-            os.remove(received_file)
-            print(f"CSV file {received_file} deleted.")
-        
-        print("Received JSON data:", data)
-        return JSONResponse(content={"message": "File uploaded successfully!", "data": data})
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON file.")
-    
-    is_processing = False
+        result = scrape_and_add_article(
+            url, processed_dict, scrapped_dict, lengths_dict, latest_doc_id,
+            processed_file, scrapped_file, lengths_file, doc_id_file
+        )
 
-def validate_medium_url(url: str) -> bool:
-    return url.startswith("https://medium.com/")
+        if result['success']:
+            stop_words = set(stopwords.words('english'))
+            add_scraped_article_to_index(
+                result['data'], result['doc_id'], lexicon, inverted_index_folder, stop_words
+            )
+            print("Article uploaded and indexed successfully!")
+        else:
+            print(f"Error: {result['message']}")
+    except Exception as e:
+        print(f"Error processing article: {str(e)}")
+    finally:
+        upload_lock.release()
 
 @app.post("/upload-url")
 async def upload_url(request: UrlRequest):
-    global is_processing
-
-    if is_processing:
-        raise HTTPException(status_code=400, detail="A process is already running. Please try again later.")
-    
     url = request.url
-    
-    if not validate_medium_url(url):
-        raise HTTPException(status_code=400, detail="Invalid Medium URL.")
 
-    try:
-        article_details = get_article_details(url)
-        save_article_to_csv(article_details)
-        print(f"Article details for '{article_details['title']}' have been saved to CSV.")
+    # Try to acquire the lock for upload
+    if not upload_lock.acquire(blocking=False):
+        raise HTTPException(status_code=400, detail="A process is already running. Please try again later.")
 
-        iterate_dataset(received_file, lexicon_file)
-
-        executor = ProcessPoolExecutor()
-        executor.submit(create_inverted_index)
-        is_processing = True
-        
-        if os.path.exists(received_file):
-            os.remove(received_file)
-            print(f"CSV file {received_file} deleted.")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing article: {str(e)}")
-    
-    return {"message": "URL uploaded successfully", "url": url}
+    # Start the upload in a separate thread
+    thread = threading.Thread(target=threaded_upload, args=(url,))
+    thread.start()
+    return JSONResponse(content={"message": "Upload started in background. You can continue searching."})

@@ -6,7 +6,7 @@ import re
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from datetime import datetime
-from csv_utils import load_processed_to_dict
+from csv_utils import load_processed_to_dict, load_scrapped_to_dict
 from nltk.corpus import stopwords
 from lexicon_utils import load_lexicon
 from update_barrels import add_scraped_article_to_index
@@ -287,6 +287,20 @@ def add_to_processed_dict(article_data, doc_id, processed_articles_dict):
         'tags': article_data['tags']
     }
 
+def add_to_scraped_dict(article_data, doc_id, scraped_articles_dict):
+    """
+    Add article scraping metadata to the scraped articles dictionary
+    """
+    scraped_articles_dict[doc_id] = {
+        'url': article_data.get('url', ''),
+        'description': article_data.get('description', ''),
+        'member only': 'Yes' if article_data.get('members_only', False) else 'No',
+        'code': article_data.get('status_code', 0)
+    }
+
+def add_to_lengths_dict(doc_id, lengths_dict, article_length):
+    lengths_dict[doc_id] = article_length
+
 def append_to_processed_csv(article_data, doc_id, processed_file):
     """
     Append article to processed CSV file
@@ -356,7 +370,7 @@ def update_lengths(latest_doc_id, lengths_file, article_length):
         writer = csv.DictWriter(file, fieldnames=['ID', 'length'])
         writer.writerow({'ID': latest_doc_id, 'length': article_length})
 
-def scrape_and_add_article(url, processed_articles_dict, latest_doc_id, processed_file, scraped_file, doc_id_file):
+def scrape_and_add_article(url, processed_articles_dict, scraped_articles_dict, lengths_dict, latest_doc_id, processed_file, scraped_file, lengths_file, doc_id_file):
     """
     Main function to scrape and add an article if it's valid and not already processed
     
@@ -414,6 +428,7 @@ def scrape_and_add_article(url, processed_articles_dict, latest_doc_id, processe
     
     # Add to processed dictionary
     add_to_processed_dict(article_data, new_doc_id, processed_articles_dict)
+    add_to_scraped_dict(article_data, new_doc_id, scraped_articles_dict)
     
     # Append to CSV files
     append_to_processed_csv(article_data, new_doc_id, processed_file)
@@ -423,7 +438,8 @@ def scrape_and_add_article(url, processed_articles_dict, latest_doc_id, processe
     update_latest_doc_id(new_doc_id, doc_id_file)
     
     # Update latest doc length
-    update_lengths(new_doc_id, 'indexes/lengths.csv', len(article_data['text']))
+    add_to_lengths_dict(new_doc_id, lengths_dict, len(article_data['text']))
+    update_lengths(new_doc_id, lengths_file, len(article_data['text']))
     
     return {
         'success': True,
@@ -482,6 +498,7 @@ def merged_example_usage():
 
     # Load resources
     processed_articles_dict = load_processed_to_dict(processed_file)
+    scraped_articles_dict = load_scrapped_to_dict(scraped_file)
     lexicon = load_lexicon(lexicon_file)
     stop_words = set(stopwords.words('english'))
 
@@ -496,8 +513,8 @@ def merged_example_usage():
 
     # Scrape and add article
     result = scrape_and_add_article(
-        url, processed_articles_dict, latest_doc_id,
-        processed_file, scraped_file, doc_id_file
+        url, processed_articles_dict, scraped_articles_dict, lengths_dict, latest_doc_id,
+        processed_file, scraped_file, lengths_file, doc_id_file
     )
 
     if result['success']:
