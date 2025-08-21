@@ -3,11 +3,8 @@ import json
 import struct
 import os
 import re
-import tempfile
 import shutil
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from lexicon_utils import load_lexicon
 from collections import defaultdict
 
 def preprocess_word(word):
@@ -447,37 +444,3 @@ def add_scraped_article_to_index(article_data, doc_id, lexicon, inverted_index_f
     except Exception as e:
         print(f"DEBUG: Failed to add article to index: {e}")
         return False
-
-# Example usage
-def example_usage():
-    """
-    Example of how to use the inverted index updater
-    """
-    # Your existing data
-    lexicon = load_lexicon("indexes/lexicon.csv")  # Load your lexicon
-    inverted_index_folder = "indexes/inverted"
-    stop_words = set(stopwords.words('english'))  # Load your stop words
-    
-    # Scraped article data (from the scraper module)
-    article_data = {
-        'title': 'Sample Article Title viewform',
-        'text': 'This is the article content with multiple paragraphs viewform.',
-        'tags': ['technology', 'programming', 'viewform'],
-        'authors': ['John Doe'],
-        'url': 'https://medium.com/sample'
-    }
-    
-    doc_id = 200001
-    
-    # Add to inverted index
-    success = add_scraped_article_to_index(
-        article_data, doc_id, lexicon, inverted_index_folder, stop_words
-    )
-    
-    if success:
-        print("Article successfully added to inverted index!")
-    else:
-        print("Failed to add article to inverted index.")
-
-# if __name__ == "__main__":
-#     example_usage()
