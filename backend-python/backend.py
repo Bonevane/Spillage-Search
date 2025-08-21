@@ -6,10 +6,11 @@ from nltk.tokenize import word_tokenize
 from nltk import WordNetLemmatizer
 from heapq import nlargest
 
-from classes import QueryRequest, UrlRequest, SearchResult, Result, QueryCache, SummarizeRequest, SummarizeResponse, GeminiRAGModule
+from classes import QueryRequest, UrlRequest, SearchResult, Result, QueryCache, SummarizeRequest, SummarizeArticleRequest, SummarizeResponse, GeminiRAGModule
 from lexicon_utils import load_lexicon, preprocess_word
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
 from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths
+from medium_scraper import scrape_medium_article
 
 import threading
 import struct
@@ -451,6 +452,35 @@ async def summarize_results(request: SummarizeRequest):
             status_code=500,
             detail=f"Error generating summary: {str(e)}"
         )
+
+
+@app.post("/summarize-article")
+async def summarize_article(request: SummarizeArticleRequest):
+    # Scrape the article
+    article_data = scrape_medium_article(request.url)
+    if not article_data or "error" in article_data or not article_data.get("title"):
+        raise HTTPException(status_code=400, detail=f"Failed to scrape article: {article_data.get('error', 'No title found')}")
+    
+    # Prepare context for Gemini
+    context = f"Title: {article_data['title']}\n\n{article_data['text']}\n\nDescription: {article_data.get('description', '')}"
+    query = f"Summarize the following Medium article: {article_data['title']}"
+    
+    # Generate summary using Gemini
+    try:
+        summary = await gemini_rag.generate_summary(query, context, request.summary_length)
+        return {
+            "success": True,
+            "summary": summary,
+            "title": article_data['title'],
+            "url": request.url,
+            "authors": article_data.get('authors', []),
+            "tags": article_data.get('tags', []),
+            "thumbnail": article_data.get('thumbnail', None),
+            "description": article_data.get('description', ""),
+            "members_only": article_data.get('members_only', False)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
 async def generate_summary_with_gemini(query: str, search_results: List[Dict], summary_length: str = "short") -> Dict[str, Any]:
     """Generate summary using Gemini with pre-formatted results"""

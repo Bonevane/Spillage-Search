@@ -84,6 +84,10 @@ class SummarizeRequest(BaseModel):
     custom_query: Optional[str] = None  # Override cached query
     summary_length: str = "short"  # short, medium, long
 
+class SummarizeArticleRequest(BaseModel):
+    url: str
+    summary_length: str = "short"  # Optional: "short", "medium", "long"
+
 class SummarizeResponse(BaseModel):
     success: bool
     message: str
