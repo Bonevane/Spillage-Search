@@ -38,6 +38,8 @@ async def startup_event():
         api_key=os.getenv("GEMINI_API_KEY"),
         model_name="gemini-1.5-flash"  # Free tier model
     )
+    
+
 
 # Loading lexicon, processed data, scrapped data and lengths data
 lexicon = load_lexicon(lexicon_file)
@@ -275,8 +277,32 @@ def search_documents(request: QueryRequest):
 
 
 # UPLOAD APIs
+# Shared upload status dictionary
+upload_status = {
+    "is_uploading": False,
+    "current_step": None,
+    "progress": 0,
+    "error": None,
+    "success": False,
+}
+
+def update_status(step=None, progress=None, error=None, success=None, is_uploading=None):
+    if step is not None:
+        upload_status["current_step"] = step
+    if progress is not None:
+        upload_status["progress"] = progress
+    if error is not None:
+        upload_status["error"] = error
+    if success is not None:
+        upload_status["success"] = success
+    if is_uploading is not None:
+        upload_status["is_uploading"] = is_uploading
+
+
 def threaded_upload(url):
     try:
+        update_status(is_uploading=True, step="Starting upload...", progress=5, error=None, success=False)
+
         from medium_scraper import scrape_and_add_article
         from update_barrels import add_scraped_article_to_index
 
@@ -286,23 +312,29 @@ def threaded_upload(url):
             with open(doc_id_file, 'r') as f:
                 latest_doc_id = int(f.read().strip())
 
+        update_status(step="Extracting article content...", progress=25)
         result = scrape_and_add_article(
             url, processed_dict, scrapped_dict, lengths_dict, latest_doc_id,
             processed_file, scrapped_file, lengths_file, doc_id_file
         )
 
         if result['success']:
+            update_status(step="Indexing article... This may take a few minutes", progress=70)
             stop_words = set(stopwords.words('english'))
             add_scraped_article_to_index(
                 result['data'], result['doc_id'], lexicon, inverted_index_folder, stop_words
             )
-            print("Article uploaded and indexed successfully!")
+            update_status(step="Completed", progress=100, success=True)
         else:
-            print(f"Error: {result['message']}")
+            update_status(step="Failed during scraping", error=result['message'], success=False)
+
     except Exception as e:
-        print(f"Error processing article: {str(e)}")
+        update_status(step="Error occurred", error=str(e), success=False)
+
     finally:
         upload_lock.release()
+        update_status(is_uploading=False)
+
 
 @app.post("/upload-url")
 async def upload_url(request: UrlRequest):
@@ -312,12 +344,18 @@ async def upload_url(request: UrlRequest):
     if not upload_lock.acquire(blocking=False):
         raise HTTPException(status_code=400, detail="A process is already running. Please try again later.")
 
+    # Reset status for new upload
+    update_status(is_uploading=True, step="Queued for upload...", progress=0, error=None, success=False)
+
     # Start the upload in a separate thread
     thread = threading.Thread(target=threaded_upload, args=(url,))
     thread.start()
     return JSONResponse(content={"message": "Upload started in background. You can continue searching."})
 
 
+@app.get("/upload-status")
+async def upload_status_endpoint():
+    return JSONResponse(content=upload_status)
 
 
 

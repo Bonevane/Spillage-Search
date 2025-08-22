@@ -14,3 +14,7 @@ export interface HeaderProps {
   isSticky: boolean;
   headerHeight: string;
 }
+
+export interface AddArticleBoxProps {
+  setShowAddDialog: (show: boolean) => void;
+}

@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { SearchResult } from "@/lib/types";
 import Header from "@/components/Header";
+import AddArticleBox from "@/components/AddArticleBox";
+import ResultsSection from "@/components/ResultsSection";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,12 +33,14 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [aiSummary, setAiSummary] = useState("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [summaryForArticle, setSummaryForArticle] = useState<{
     [key: string]: string;
   }>({});
   const [loadingSummaryFor, setLoadingSummaryFor] = useState<string | null>(
     null
   );
+
   const resultsPerPage = 9;
 
   useEffect(() => {
@@ -165,10 +169,24 @@ export default function Home() {
     setCurrentPage(1);
   };
 
-  const filteredResults = results.filter((result) => {
+  // Filter by tag
+  let filteredResults = results.filter((result) => {
     if (selectedTag === "All") return true;
     return result.tags.includes(selectedTag);
   });
+
+  // Sort by selected option
+  if (sortBy === "Date (New)") {
+    filteredResults = filteredResults.slice().sort((a, b) => {
+      // Assuming result.date is ISO string or valid date string
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+  } else if (sortBy === "Date (Old)") {
+    filteredResults = filteredResults.slice().sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+  }
+  // Relevancy is default order (as returned from backend)
 
   const totalPages = Math.ceil(filteredResults.length / resultsPerPage);
   const startIndex = (currentPage - 1) * resultsPerPage;
@@ -191,7 +209,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header headerHeight={headerHeight} isSticky={isSticky} />
+      <Header
+        headerHeight={headerHeight}
+        isSticky={isSticky}
+        setShowAddDialog={setShowAddDialog}
+      />
 
       <div className="pt-24">
         {/* Main Content */}
@@ -211,11 +233,15 @@ export default function Home() {
               className="text-2xl md:text-7xl font-bold mb-4"
               initial={{
                 fontSize: hasSearched ? "5rem" : "6rem",
+                opacity: 0,
+                y: -10,
               }}
               animate={{
                 fontSize: hasSearched ? "5rem" : "6rem",
+                opacity: 1,
+                y: 0,
               }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
               id="results-section"
             >
               Search
@@ -224,11 +250,15 @@ export default function Home() {
               className={`text-gray-600 text-lg`}
               initial={{
                 fontSize: hasSearched ? "0.925rem" : "1.125rem",
+                opacity: 0,
+                y: -10,
               }}
               animate={{
                 fontSize: hasSearched ? "0.925rem" : "1.125rem",
+                opacity: 1,
+                y: 0,
               }}
-              transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
             >
               Millions of works, articles, and collections.
             </motion.p>
@@ -242,7 +272,7 @@ export default function Home() {
             style={{ top: isSticky ? headerHeight : "auto" }}
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.7 }}
           >
             {/* Main Search Input */}
             <div className="relative mb-4">
@@ -333,6 +363,15 @@ export default function Home() {
             </div>
           </motion.div>
 
+          <ResultsSection
+            results={results}
+            generativeSummary={generativeSummary}
+            sortBy={sortBy}
+            aiSummary={aiSummary}
+            isGeneratingSummary={isGeneratingSummary}
+            hasSearched={hasSearched}
+          />
+
           {/* Results Section */}
           <AnimatePresence>
             {hasSearched && (
@@ -346,10 +385,10 @@ export default function Home() {
                 <AnimatePresence>
                   {generativeSummary && (
                     <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.4 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, height: "auto", maxHeight: 500 }}
+                      exit={{ opacity: 0, maxHeight: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100"
                     >
                       <div className="flex items-center mb-4">
@@ -363,6 +402,7 @@ export default function Home() {
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
                           className="flex items-center space-x-3 py-4"
                         >
                           <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
@@ -640,6 +680,7 @@ export default function Home() {
           </AnimatePresence>
         </div>
       </div>
+      {showAddDialog && <AddArticleBox setShowAddDialog={setShowAddDialog} />}
     </div>
   );
 }

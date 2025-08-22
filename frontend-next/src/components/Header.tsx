@@ -1,11 +1,33 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HeaderProps } from "@/lib/types";
+import { generalTidbits } from "@/lib/mock";
+import RotatingText from "./RotatingText";
 
-export default function Header({ isSticky, headerHeight }: HeaderProps) {
+export default function Header({
+  isSticky,
+  headerHeight,
+  setShowAddDialog,
+}: HeaderProps & { setShowAddDialog: (show: boolean) => void }) {
+  const [shuffledTidbits, setShuffledTidbits] = useState<string[]>(() =>
+    shuffleArray(generalTidbits)
+  );
+  const rotatingRef = useRef<{ next: () => void } | null>(null);
+
+  // Fisher–Yates shuffle
+  function shuffleArray(array: string[]): string[] {
+    const arr = array.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
   return (
     <motion.header
       className={cn(
@@ -37,10 +59,26 @@ export default function Header({ isSticky, headerHeight }: HeaderProps) {
             >
               <a
                 href="#"
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+                title="Click for another fact!"
+                onClick={() => {
+                  rotatingRef.current?.next();
+                }}
               >
-                Did you know? The oldest known ceramic artifact dates back over
-                28,000 years.
+                <RotatingText
+                  ref={rotatingRef}
+                  texts={shuffledTidbits}
+                  mainClassName=""
+                  staggerFrom={"first"}
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "-120%" }}
+                  staggerDuration={0.005}
+                  splitLevelClassName="overflow-hidden"
+                  animatePresenceMode="wait"
+                  transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                  rotationInterval={10000}
+                />
               </a>
             </motion.nav>
           </motion.div>
@@ -65,6 +103,7 @@ export default function Header({ isSticky, headerHeight }: HeaderProps) {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.7, ease: "easeOut" }}
+              onClick={() => setShowAddDialog(true)}
             >
               <Plus size={20} />
               <a href="#" className="pb-[0.5px]">

@@ -1,59 +1,64 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { Search, Users, Globe, Award, ArrowRight, BookOpen, Palette, Archive } from 'lucide-react';
-import Link from 'next/link';
+import { motion } from "framer-motion";
+import { Search, Zap, Database, Link2 } from "lucide-react";
+import Link from "next/link";
+import Header from "@/components/Header";
 
 export default function About() {
   const stats = [
-    { number: '105,272', label: 'Works' },
-    { number: '333', label: 'Curated Collections' },
-    { number: '8', label: 'Editorial Features' },
-    { number: '50+', label: 'Countries' }
+    { number: "190,000+", label: "Medium Articles" },
+    { number: "Fast", label: "Search Results" },
+    { number: "Real-time", label: "Article Addition" },
+    { number: "BM25", label: "Ranking Algorithm" },
   ];
 
   const features = [
     {
       icon: Search,
-      title: 'Advanced Search',
-      description: 'Discover millions of works with our powerful search engine that understands context and meaning.'
+      title: "Advanced Search",
+      description:
+        "Powerful search through 190,000+ Medium articles using BM25 ranking with lemmatization and stopword filtering.",
     },
     {
-      icon: BookOpen,
-      title: 'Curated Collections',
-      description: 'Expertly curated collections that tell stories and connect works across cultures and time periods.'
+      icon: Link2,
+      title: "Add Articles by URL",
+      description:
+        "Simply paste any Medium article URL to instantly add it to our searchable database. No waiting, no delays.",
     },
     {
-      icon: Palette,
-      title: 'Editorial Features',
-      description: 'In-depth articles and features that provide context and insight into the world of art and culture.'
+      icon: Zap,
+      title: "Lightning Fast",
+      description:
+        "Pre-generated indexes and optimized algorithms ensure you get results in milliseconds, not seconds.",
     },
     {
-      icon: Archive,
-      title: 'Digital Preservation',
-      description: 'Preserving cultural heritage through high-quality digitization and comprehensive documentation.'
-    }
+      icon: Database,
+      title: "Comprehensive Dataset",
+      description:
+        "Built on the Kaggle Medium Articles dataset with continuous expansion through user contributions.",
+    },
   ];
 
-  const team = [
+  const techStack = [
     {
-      name: 'Sarah Chen',
-      role: 'Founder & CEO',
-      image: 'https://images.pexels.com/photos/3785077/pexels-photo-3785077.jpeg?auto=compress&cs=tinysrgb&w=400',
-      description: 'Former museum curator with 15 years of experience in digital humanities.'
+      name: "Next.js",
+      role: "Frontend Framework",
+      description:
+        "Modern React framework providing the sleek, responsive interface you're using right now.",
     },
     {
-      name: 'Marcus Rodriguez',
-      role: 'Head of Technology',
-      image: 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
-      description: 'AI researcher specializing in computer vision and cultural heritage preservation.'
+      name: "FastAPI",
+      role: "Backend Engine",
+      description:
+        "High-performance Python backend handling search queries and article processing with blazing speed.",
     },
     {
-      name: 'Elena Kowalski',
-      role: 'Chief Curator',
-      image: 'https://images.pexels.com/photos/3756679/pexels-photo-3756679.jpeg?auto=compress&cs=tinysrgb&w=400',
-      description: 'Art historian and curator with expertise in cross-cultural artistic movements.'
-    }
+      name: "BM25 Algorithm",
+      role: "Search Ranking",
+      description:
+        "Industry-standard probabilistic ranking function ensuring the most relevant articles surface first.",
+    },
   ];
 
   return (
@@ -67,19 +72,30 @@ export default function About() {
                 <span className="text-xl font-bold">SPILLAGE</span>
               </Link>
               <nav className="hidden md:flex space-x-6">
-                <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors">Works</Link>
-                <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Curated Collections</a>
-                <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Editorial Features</a>
-                <Link href="/about" className="text-gray-900 font-medium">About</Link>
+                <Link
+                  href="/"
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Search
+                </Link>
+                <a
+                  href="#"
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Add Article
+                </a>
+                <Link href="/about" className="text-gray-900 font-medium">
+                  About
+                </Link>
               </nav>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="hidden sm:block relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search by..."
+                  placeholder="Search articles..."
                   className="pl-10 pr-4 py-2 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 />
               </div>
@@ -114,8 +130,10 @@ export default function About() {
               transition={{ duration: 0.8, delay: 0.4 }}
               className="text-xl text-gray-600 mb-8 max-w-3xl"
             >
-              We're democratizing access to the world's cultural heritage through technology, 
-              making millions of works, articles, and collections searchable and discoverable.
+              The fastest way to search through Medium's vast collection of
+              articles. Discover insights, stories, and knowledge from 190,000+
+              articles with lightning-fast search powered by advanced
+              algorithms.
             </motion.p>
           </div>
         </motion.section>
@@ -156,12 +174,15 @@ export default function About() {
         >
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                Our Mission
+              </h2>
               <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                Cultural heritage belongs to everyone. We believe that art, artifacts, and knowledge 
-                should be accessible to all, regardless of geographic location or economic status. 
-                Through advanced search technology and careful curation, we're building bridges 
-                between cultures and making the world's treasures discoverable.
+                Medium hosts millions of articles on every topic imaginable, but
+                finding the right content can be challenging. Spillage cuts
+                through the noise with intelligent search that understands
+                context, relevance, and meaning. We're making Medium's treasure
+                trove of knowledge truly searchable and accessible.
               </p>
             </div>
           </div>
@@ -175,10 +196,13 @@ export default function About() {
           className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20"
         >
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">What We Do</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">
+              What We Do
+            </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              We combine cutting-edge technology with deep cultural expertise to create 
-              the world's most comprehensive cultural search engine.
+              We've built the most comprehensive and fastest Medium article
+              search engine, combining cutting-edge algorithms with real-time
+              expansion capabilities.
             </p>
           </div>
 
@@ -201,9 +225,7 @@ export default function About() {
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600">
-                      {feature.description}
-                    </p>
+                    <p className="text-gray-600">{feature.description}</p>
                   </div>
                 </div>
               </motion.div>
@@ -211,7 +233,7 @@ export default function About() {
           </div>
         </motion.section>
 
-        {/* Team Section */}
+        {/* Tech Stack Section */}
         <motion.section
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -220,40 +242,95 @@ export default function About() {
         >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Team</h2>
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                Built with Modern Technology
+              </h2>
               <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                We're a diverse team of technologists, curators, and cultural experts 
-                united by our passion for making knowledge accessible.
+                Every component of Spillage is optimized for speed and accuracy,
+                from the frontend interface to the search algorithms running
+                behind the scenes.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {team.map((member, index) => (
+              {techStack.map((tech, index) => (
                 <motion.div
-                  key={member.name}
+                  key={tech.name}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 1.8 + index * 0.1 }}
-                  className="text-center"
+                  className="text-center p-6 bg-gray-50 rounded-xl"
                 >
-                  <div className="mb-6">
-                    <img
-                      src={member.image}
-                      alt={member.name}
-                      className="w-32 h-32 rounded-full mx-auto object-cover"
-                    />
-                  </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    {member.name}
+                    {tech.name}
                   </h3>
-                  <p className="text-blue-600 font-medium mb-3">
-                    {member.role}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {member.description}
-                  </p>
+                  <p className="text-blue-600 font-medium mb-3">{tech.role}</p>
+                  <p className="text-gray-600 text-sm">{tech.description}</p>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </motion.section>
+
+        {/* How It Works Section */}
+        <motion.section
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 2.0 }}
+          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20"
+        >
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">
+              How It Works
+            </h2>
+          </div>
+
+          <div className="space-y-8">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
+                1
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Comprehensive Dataset
+                </h3>
+                <p className="text-gray-600">
+                  We started with the Kaggle Medium Articles dataset, providing
+                  a solid foundation of 190,000+ articles across diverse topics
+                  and authors.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
+                2
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Smart Processing
+                </h3>
+                <p className="text-gray-600">
+                  Every article is processed using advanced NLP techniques
+                  including lemmatization, stopword removal, and intelligent
+                  tokenization for optimal searchability.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
+                3
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Lightning Fast Search
+                </h3>
+                <p className="text-gray-600">
+                  Pre-generated inverted indexes and BM25 ranking ensure you get
+                  the most relevant results in milliseconds, not seconds.
+                </p>
+              </div>
             </div>
           </div>
         </motion.section>
@@ -262,24 +339,29 @@ export default function About() {
         <motion.section
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 2.0 }}
+          transition={{ duration: 0.8, delay: 2.2 }}
           className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20"
         >
           <div className="bg-gray-900 rounded-2xl p-12 text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">
-              Ready to Explore?
-            </h2>
+            <h2 className="text-3xl font-bold mb-4">Ready to Search?</h2>
             <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-              Start your journey through millions of cultural works, articles, and collections. 
-              Discover connections you never knew existed.
+              Dive into 190,000+ Medium articles and discover the content you
+              never knew you needed. Or contribute by adding your favorite
+              articles to expand our database.
             </p>
-            <Link
-              href="/"
-              className="inline-flex items-center px-6 py-3 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-            >
-              Start Searching
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/"
+                className="inline-flex items-center px-6 py-3 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+              >
+                Start Searching
+                <Search className="ml-2 w-4 h-4" />
+              </Link>
+              <button className="inline-flex items-center px-6 py-3 bg-transparent border-2 border-white text-white rounded-lg font-medium hover:bg-white hover:text-gray-900 transition-colors">
+                Add an Article
+                <Link2 className="ml-2 w-4 h-4" />
+              </button>
+            </div>
           </div>
         </motion.section>
       </div>
