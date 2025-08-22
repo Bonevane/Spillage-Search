@@ -50,31 +50,46 @@ export default function Home() {
     if (generativeSummary && hasSearched && results.length > 0) {
       generateAiSummary();
     }
+    if (results.length == 0) {
+      setAiSummary("No articles were found to summarize.");
+    }
   }, [generativeSummary, hasSearched, results]);
 
   const generateAiSummary = async () => {
     setIsGeneratingSummary(true);
-    // Simulate AI summary generation
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    setAiSummary(
-      `Based on your search results, we found ${results.length} articles about ceramic arts and pottery. The collection spans from ancient archaeological findings to contemporary ceramic sculptures. Key themes include historical techniques from Korean Goryeo and Chinese Ming dynasties, traditional tea ceremonies, modern artistic expressions, and conservation methods. Notable contributors include renowned archaeologists, art historians, and contemporary ceramic artists who explore both functional and sculptural applications of clay.`
-    );
+    try {
+      const res = await fetch("http://localhost:8000/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ searchQuery }), // Or pass query, depending on backend
+      });
+      const data = await res.json();
+      setAiSummary(data.summary); // Adjust key as needed
+    } catch (err) {
+      setAiSummary("Error generating summary.");
+    }
     setIsGeneratingSummary(false);
   };
 
-  const generateArticleSummary = async (articleId: string, title: string) => {
+  const generateArticleSummary = async (articleId: string, URL: string) => {
     setLoadingSummaryFor(articleId);
-
-    // Simulate API call to summarize specific article
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const summaryText = `This article explores ${title.toLowerCase()}. It covers key historical context, technical details about ceramic production methods, cultural significance, and contemporary relevance. The piece includes expert insights from leading researchers and provides detailed analysis of artistic techniques and their evolution over time.`;
-
-    setSummaryForArticle((prev) => ({
-      ...prev,
-      [articleId]: summaryText,
-    }));
+    try {
+      const res = await fetch("http://localhost:8000/summarize-article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: URL, summary_length: "short" }),
+      });
+      const data = await res.json();
+      setSummaryForArticle((prev) => ({
+        ...prev,
+        [articleId]: data.summary, // Adjust key as needed
+      }));
+    } catch (err) {
+      setSummaryForArticle((prev) => ({
+        ...prev,
+        [articleId]: "Error generating summary.",
+      }));
+    }
     setLoadingSummaryFor(null);
   };
 
@@ -88,7 +103,7 @@ export default function Home() {
 
   const getViewUrl = (result: SearchResult) => {
     return result.member === "Yes"
-      ? result.url.replace("medium.com", "freedium.cfd")
+      ? `https://freedium.cfd/${result.url}`
       : result.url;
   };
 
@@ -493,7 +508,7 @@ export default function Home() {
                                       onClick={() =>
                                         generateArticleSummary(
                                           result.id,
-                                          result.title
+                                          result.url
                                         )
                                       }
                                       disabled={loadingSummaryFor === result.id}
@@ -572,7 +587,7 @@ export default function Home() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.3 }}
-                    className="flex justify-center items-center space-x-2 pb-20"
+                    className="flex flex-wrap justify-center items-center space-x-2 pb-20"
                   >
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
@@ -587,7 +602,7 @@ export default function Home() {
                       Previous
                     </button>
 
-                    <div className="flex space-x-1">
+                    <div className="flex flex-wrap gap-1 justify-center">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                         (page) => (
                           <button
