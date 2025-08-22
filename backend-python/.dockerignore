@@ -1,0 +1,6 @@
+fly.toml
+.venv
+__pycache__/
+datasets/
+indexes_old/
+forward/

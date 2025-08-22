@@ -1,5 +1,5 @@
-*.csv
 *.npy
+.env
 
 test*.py
 
@@ -7,7 +7,5 @@ __pycache__/
 
 backup/
 
-indexes/
-
-datasets/
-
+indexes_old/
+forward/
