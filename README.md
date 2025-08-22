@@ -12,7 +12,7 @@
 
 </div>
 
-A high-performance search engine for Medium articles built on Google's foundational search architecture research. Features AI-powered summaries, real-time indexing, and lightning-fast BM25 search across 190k+ articles.
+A high-performance search engine for Medium articles built on Google's foundational search architecture research. Features AI-powered summaries, real-time indexing, and lightning-fast BM25 search scoring across 190k+ articles.
 
 ## 🚀 Features
 
