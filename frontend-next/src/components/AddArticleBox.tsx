@@ -46,7 +46,9 @@ export default function AddArticleBox({
   // Poll upload status
   const pollUploadStatus = async () => {
     try {
-      const response = await fetch("http://localhost:8000/upload-status");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/upload-status`
+      );
       if (response.ok) {
         const status = await response.json();
         setUploadStatus(status);
@@ -119,13 +121,16 @@ export default function AddArticleBox({
     setSubmitStatus({ type: null, message: "" });
 
     try {
-      const response = await fetch("http://localhost:8000/upload-url", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: articleUrl }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/upload-url`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url: articleUrl }),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();

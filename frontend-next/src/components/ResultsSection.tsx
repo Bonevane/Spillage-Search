@@ -42,11 +42,14 @@ export default function ResultsSection({
   const generateArticleSummary = async (articleId: string, URL: string) => {
     setLoadingSummaryFor(articleId);
     try {
-      const res = await fetch("http://localhost:8000/summarize-article", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: URL, summary_length: "short" }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/summarize-article`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: URL, summary_length: "short" }),
+        }
+      );
       const data = await res.json();
       setSummaryForArticle((prev) => ({
         ...prev,

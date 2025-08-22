@@ -11,7 +11,6 @@ from nltk import WordNetLemmatizer
 from heapq import nlargest
 
 from classes import QueryRequest, UrlRequest, SearchResult, QueryCache, SummarizeRequest, SummarizeArticleRequest, SummarizeResponse, GeminiRAGModule
-from search import append_inverted_barrel_data, calculate_bm25_scores, find_intersection, get_top_100_results, make_results
 from lexicon_utils import load_lexicon, preprocess_word
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
 from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths

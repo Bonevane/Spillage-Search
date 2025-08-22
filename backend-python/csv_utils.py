@@ -3,7 +3,6 @@ import os
 import json
 import re
 from config import id_file, doc_id_file, processed_file
-from sentence_transformers import SentenceTransformer, util
 import numpy as np
 
 #

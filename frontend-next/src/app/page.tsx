@@ -41,7 +41,7 @@ export default function Home() {
   const generateAiSummary = async () => {
     setIsGeneratingSummary(true);
     try {
-      const res = await fetch("http://localhost:8000/summarize", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/summarize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ searchQuery }), // Or pass query, depending on backend
@@ -62,7 +62,7 @@ export default function Home() {
     setAiSummary("");
 
     try {
-      const res = await fetch("http://localhost:8000/search", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
