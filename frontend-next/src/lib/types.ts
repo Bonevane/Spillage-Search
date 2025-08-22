@@ -10,11 +10,16 @@ export interface SearchResult {
   member: string;
 }
 
-export interface HeaderProps {
-  isSticky: boolean;
-  headerHeight: string;
-}
-
 export interface AddArticleBoxProps {
   setShowAddDialog: (show: boolean) => void;
+}
+
+export interface ResultsSectionProps {
+  hasSearched: boolean;
+  results: SearchResult[];
+  generativeSummary: boolean;
+  sortBy: string;
+  aiSummary: string;
+  isGeneratingSummary: boolean;
+  isLoading: boolean;
 }

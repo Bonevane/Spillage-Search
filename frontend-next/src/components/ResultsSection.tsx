@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -12,15 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { SearchResult } from "@/lib/types";
-
-interface ResultsSectionProps {
-  hasSearched: boolean;
-  results: SearchResult[];
-  generativeSummary: boolean;
-  sortBy: string;
-  aiSummary: string;
-  isGeneratingSummary: boolean;
-}
+import { ResultsSectionProps } from "@/lib/types";
 
 export default function ResultsSection({
   hasSearched,
@@ -29,6 +21,7 @@ export default function ResultsSection({
   sortBy,
   aiSummary,
   isGeneratingSummary,
+  isLoading,
 }: ResultsSectionProps) {
   const [selectedTag, setSelectedTag] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,6 +31,11 @@ export default function ResultsSection({
   const [loadingSummaryFor, setLoadingSummaryFor] = useState<string | null>(
     null
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedTag("All");
+  }, [isLoading]);
 
   const resultsPerPage = 9;
 
@@ -148,7 +146,7 @@ export default function ResultsSection({
           >
             {/* AI Summary Section */}
             <AnimatePresence>
-              {generativeSummary && (
+              {hasSearched && generativeSummary && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1, height: "auto", maxHeight: 500 }}

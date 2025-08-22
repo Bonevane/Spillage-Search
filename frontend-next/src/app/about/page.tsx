@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Zap, Database, Link2 } from "lucide-react";
-import Link from "next/link";
 import Header from "@/components/Header";
+import AddArticleBox from "@/components/AddArticleBox";
+import Link from "next/link";
 
 export default function About() {
+  const [showAddDialog, setShowAddDialog] = useState(false);
+
   const stats = [
     { number: "190,000+", label: "Medium Articles" },
     { number: "Fast", label: "Search Results" },
@@ -64,106 +68,67 @@ export default function About() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 backdrop-blur-md bg-white/80 border-b border-gray-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20">
-          <div className="flex items-center justify-between h-full">
-            <div className="flex items-center space-x-8">
-              <Link href="/" className="flex items-center space-x-2">
-                <span className="text-xl font-bold">SPILLAGE</span>
-              </Link>
-              <nav className="hidden md:flex space-x-6">
-                <Link
-                  href="/"
-                  className="text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  Search
-                </Link>
-                <a
-                  href="#"
-                  className="text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  Add Article
-                </a>
-                <Link href="/about" className="text-gray-900 font-medium">
-                  About
-                </Link>
-              </nav>
-            </div>
+      <Header setShowAddDialog={setShowAddDialog} />
 
-            <div className="flex items-center space-x-4">
-              <div className="hidden sm:block relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search articles..."
-                  className="pl-10 pr-4 py-2 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              </div>
-              <button className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-                Add Article
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="pt-20">
+      <div className="">
         {/* Hero Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
-        >
-          <div className="text-left">
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-6xl md:text-7xl font-bold text-gray-900 mb-6"
-            >
-              About Spillage
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="text-xl text-gray-600 mb-8 max-w-3xl"
-            >
-              The fastest way to search through Medium's vast collection of
-              articles. Discover insights, stories, and knowledge from 190,000+
-              articles with lightning-fast search powered by advanced
-              algorithms.
-            </motion.p>
-          </div>
-        </motion.section>
-
-        {/* Stats Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}
-                className="text-center"
+        <div className="h-screen flex flex-col items-center justify-center pt-10">
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+          >
+            <div className="text-left">
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="text-6xl md:text-7xl font-bold text-gray-900 mb-6"
               >
-                <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">
-                  {stat.number}
-                </div>
-                <div className="text-gray-600 text-sm uppercase tracking-wide">
-                  {stat.label}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.section>
+                About Spillage
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+                className="text-xl text-gray-600 mb-8 max-w-3xl"
+              >
+                The fastest way to search through Medium&apos;s vast collection
+                of articles. Discover insights, stories, and knowledge from
+                190,000+ articles with lightning-fast search powered by advanced
+                algorithms.
+              </motion.p>
+            </div>
+          </motion.section>
+
+          {/* Stats Section */}
+          <motion.section
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {stats.map((stat, index) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}
+                  className="text-center"
+                >
+                  <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">
+                    {stat.number}
+                  </div>
+                  <div className="text-gray-600 text-sm uppercase tracking-wide">
+                    {stat.label}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+        </div>
 
         {/* Mission Section */}
         <motion.section
@@ -181,8 +146,8 @@ export default function About() {
                 Medium hosts millions of articles on every topic imaginable, but
                 finding the right content can be challenging. Spillage cuts
                 through the noise with intelligent search that understands
-                context, relevance, and meaning. We're making Medium's treasure
-                trove of knowledge truly searchable and accessible.
+                context, relevance, and meaning. We&apos;re making Medium&apos;s
+                treasure trove of knowledge truly searchable and accessible.
               </p>
             </div>
           </div>
@@ -200,7 +165,7 @@ export default function About() {
               What We Do
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              We've built the most comprehensive and fastest Medium article
+              We&apos;ve built the most comprehensive and fastest Medium article
               search engine, combining cutting-edge algorithms with real-time
               expansion capabilities.
             </p>
@@ -357,14 +322,12 @@ export default function About() {
                 Start Searching
                 <Search className="ml-2 w-4 h-4" />
               </Link>
-              <button className="inline-flex items-center px-6 py-3 bg-transparent border-2 border-white text-white rounded-lg font-medium hover:bg-white hover:text-gray-900 transition-colors">
-                Add an Article
-                <Link2 className="ml-2 w-4 h-4" />
-              </button>
             </div>
           </div>
         </motion.section>
       </div>
+
+      {showAddDialog && <AddArticleBox setShowAddDialog={setShowAddDialog} />}
     </div>
   );
 }

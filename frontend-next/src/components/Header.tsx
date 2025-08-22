@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HeaderProps } from "@/lib/types";
 import { generalTidbits } from "@/lib/mock";
-import RotatingText from "./RotatingText";
+import RotatingText, { RotatingTextRef } from "./RotatingText";
+import Link from "next/link";
 
 export default function Header({
-  isSticky,
-  headerHeight,
   setShowAddDialog,
-}: HeaderProps & { setShowAddDialog: (show: boolean) => void }) {
+}: {
+  setShowAddDialog: (show: boolean) => void;
+}) {
+  const [scrollY, setScrollY] = useState(0);
   const [shuffledTidbits, setShuffledTidbits] = useState<string[]>(() =>
     shuffleArray(generalTidbits)
   );
-  const rotatingRef = useRef<{ next: () => void } | null>(null);
+  const rotatingRef = useRef<RotatingTextRef | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Fisher–Yates shuffle
   function shuffleArray(array: string[]): string[] {
@@ -27,6 +34,9 @@ export default function Header({
     }
     return arr;
   }
+
+  const headerHeight = scrollY > 10 ? "80px" : "100px";
+  const isSticky = scrollY > 10;
 
   return (
     <motion.header
@@ -47,7 +57,7 @@ export default function Header({
               transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
             >
               <span className="font-[Playfair] text-2xl font-bold">
-                SPILLAGE
+                <Link href="/">SPILLAGE</Link>
               </span>
             </motion.div>
             {/* Navigation */}
@@ -90,12 +100,12 @@ export default function Header({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6, ease: "easeOut" }}
             >
-              <a
+              <Link
                 href="/about"
                 className="text-gray-600 hover:text-gray-900 transition-colors"
               >
                 About
-              </a>
+              </Link>
             </motion.button>
             {/* Article Button */}
             <motion.button
