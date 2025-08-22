@@ -1,3 +1,6 @@
+# THIS FUNCTION WAS USED TO SCRAPE THE MEDIUM THUMBNAILS
+# CREATES SCRAPED.CSV
+
 import aiohttp
 import asyncio
 from bs4 import BeautifulSoup

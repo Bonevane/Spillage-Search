@@ -1,4 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+############################################################
+# IMPORTS & ENVIRONMENT SETUP
+############################################################
+from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from nltk.corpus import stopwords
@@ -6,7 +10,8 @@ from nltk.tokenize import word_tokenize
 from nltk import WordNetLemmatizer
 from heapq import nlargest
 
-from classes import QueryRequest, UrlRequest, SearchResult, Result, QueryCache, SummarizeRequest, SummarizeArticleRequest, SummarizeResponse, GeminiRAGModule
+from classes import QueryRequest, UrlRequest, SearchResult, QueryCache, SummarizeRequest, SummarizeArticleRequest, SummarizeResponse, GeminiRAGModule
+from search import append_inverted_barrel_data, calculate_bm25_scores, find_intersection, get_top_100_results, make_results
 from lexicon_utils import load_lexicon, preprocess_word
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
 from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths
@@ -21,25 +26,35 @@ import asyncio
 import os
 import math
 import time as t
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 from downloads import download_nltk_resources
 from dotenv import load_dotenv
 load_dotenv()
+download_nltk_resources()
 
-# download_nltk_resources()
-app = FastAPI()
-upload_lock = threading.Lock()
+############################################################
+# FAST API SETUP
+############################################################
 
-@app.on_event("startup")
-async def startup_event():
-    # Initialize the Gemini summarization service
+# Use FastAPI lifespan event for startup/shutdown logic
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize Gemini summarization service
     setup_gemini_summarization_service(
         api_key=os.getenv("GEMINI_API_KEY"),
         model_name="gemini-1.5-flash"  # Free tier model
     )
-    
+    yield
+    # Shutdown: Add any cleanup logic here if needed
 
+app = FastAPI(lifespan=lifespan)
+upload_lock = threading.Lock()
+
+
+############################################################
+# GLOBAL VARIABLES & BM25 PARAMS
+############################################################
 
 # Loading lexicon, processed data, scrapped data and lengths data
 lexicon = load_lexicon(lexicon_file)
@@ -48,6 +63,7 @@ processed_dict = load_processed_to_dict(processed_file)
 scrapped_dict = load_scrapped_to_dict(scrapped_file)
 lengths_dict = load_lengths(lengths_file)
 
+# BM25 parameters
 k = 1.5
 b = 0.75
 N = len(processed_dict)
@@ -66,7 +82,10 @@ preprocess_word('apple')
 # Field size limit for CSV
 csv.field_size_limit(100_000_000)
 
-# CORS
+
+############################################################
+# CORS SETUP
+############################################################
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -76,9 +95,9 @@ app.add_middleware(
 )
 
 
-
-
-
+############################################################
+# SEARCH METHODS
+############################################################
 def append_inverted_barrel_data(lexicon, inverted_index_folder, word, data_dict):
     try:
         word_id = lexicon[word]
@@ -213,11 +232,13 @@ def get_top_100_results(score_docid_list):
     return nlargest(150, score_docid_list, key=lambda x: x[0])
 
 
+############################################################
+# SEARCH APIs
+############################################################
 
-# Global cache instance
 query_cache = QueryCache()
 
-# Your existing search function with caching added
+# Search API
 @app.post("/search", response_model=SearchResult)
 def search_documents(request: QueryRequest):
     a = t.time()
@@ -226,7 +247,6 @@ def search_documents(request: QueryRequest):
     original_query = request.query  # Store unprocessed query
     query_cache.set_processing(original_query)
     
-    # Your existing search logic (unchanged)
     query = request.query.lower()
     results = []
     bm25_scores = []
@@ -276,7 +296,10 @@ def search_documents(request: QueryRequest):
     return {"results": results, "count": total_results, "time": t.time() - a}
 
 
-# UPLOAD APIs
+############################################################
+# UPLOAD APIS
+############################################################
+
 # Shared upload status dictionary
 upload_status = {
     "is_uploading": False,
@@ -359,10 +382,9 @@ async def upload_status_endpoint():
 
 
 
-
-
-
-
+############################################################
+# SUMMARY APIS + RAG MODULE
+############################################################
 
 # Global RAG module instance
 gemini_rag = None
