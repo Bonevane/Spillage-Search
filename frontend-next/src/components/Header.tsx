@@ -1,0 +1,79 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { HeaderProps } from "@/lib/types";
+
+export default function Header({ isSticky, headerHeight }: HeaderProps) {
+  return (
+    <motion.header
+      className={cn(
+        "fixed top-0 w-full z-50 transition-all duration-300 header-animated-border",
+        isSticky && "backdrop-blur-md bg-white/80 header-sticky mb-10"
+      )}
+      style={{ height: headerHeight }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="flex items-center justify-between h-full">
+          <motion.div className="flex items-center space-x-8">
+            {/* Logo */}
+            <motion.div
+              className="flex items-center space-x-2"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
+            >
+              <span className="font-[Playfair] text-2xl font-bold">
+                SPILLAGE
+              </span>
+            </motion.div>
+            {/* Navigation */}
+            <motion.nav
+              className="hidden md:flex space-x-6"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4, ease: "easeOut" }}
+            >
+              <a
+                href="#"
+                className="text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Did you know? The oldest known ceramic artifact dates back over
+                28,000 years.
+              </a>
+            </motion.nav>
+          </motion.div>
+          <motion.div className="flex items-center space-x-4">
+            {/* About Button */}
+            <motion.button
+              className="bg-none px-4 py-1 rounded-lg hover:bg-gray-300 transition-colors border border-gray-300"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6, ease: "easeOut" }}
+            >
+              <a
+                href="/about"
+                className="text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                About
+              </a>
+            </motion.button>
+            {/* Article Button */}
+            <motion.button
+              className="flex gap-2 items-center bg-black/90 text-white px-4 py-1 rounded-lg hover:bg-gray-800 transition-colors"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.7, ease: "easeOut" }}
+            >
+              <Plus size={20} />
+              <a href="#" className="pb-[0.5px]">
+                Article
+              </a>
+            </motion.button>
+          </motion.div>
+        </div>
+      </div>
+    </motion.header>
+  );
+}
