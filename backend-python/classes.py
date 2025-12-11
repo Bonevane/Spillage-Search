@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import threading
@@ -7,17 +6,25 @@ import asyncio
 import aiohttp
 import uuid
 
-
 ###
 ### Define the request/response body structures
 ###
 class QueryRequest(BaseModel):
+    """
+    Request model for search queries.
+    """
     query: str
 
 class UrlRequest(BaseModel):
+    """
+    Request model for URL-based operations.
+    """
     url: str
 
 class Result(BaseModel):
+    """
+    Represents a single search result.
+    """
     id: int
     title: str
     description: str
@@ -29,6 +36,9 @@ class Result(BaseModel):
     member: str
 
 class SearchResult(BaseModel):
+    """
+    Represents the complete response for a search request.
+    """
     results: List[Result]
     count: int
     time: float
@@ -37,42 +47,69 @@ class SearchResult(BaseModel):
 ### Global cache for query results
 ###
 class QueryCache:
-    def __init__(self):
-        self.last_query: Optional[str] = None
-        self.last_query_timestamp: Optional[datetime] = None
-        self.last_results: List[Dict] = []
-        self.query_id: Optional[str] = None
-        self.processing_lock = threading.Lock()
-        self.is_processing = False
+    """
+    Thread-safe cache for storing the latest query results.
+    
+    Abstract Data Type for caching query state.
+    Rep Invariant:
+        - self._last_results contains at most 5 items.
+        - if self._is_processing is True, self._last_query is not None.
+    """
+    def __init__(self) -> None:
+        self._last_query: Optional[str] = None
+        self._last_query_timestamp: Optional[datetime] = None
+        self._last_results: List[Dict[str, Any]] = []
+        self._query_id: Optional[str] = None
+        self._processing_lock = threading.Lock()
+        self._is_processing = False
         
-    def update_cache(self, query: str, results: List[Dict]):
-        """Update cache with new query and results"""
-        with self.processing_lock:
-            self.last_query = query
-            self.last_query_timestamp = datetime.now()
-            self.last_results = results[:5]  # Keep top 5 results
-            self.query_id = str(uuid.uuid4())
-            self.is_processing = False
+    def update_cache(self, query: str, results: List[Dict[str, Any]]) -> None:
+        """
+        Update cache with new query and results.
+        
+        Args:
+            query: The search query string.
+            results: List of result dictionaries.
+            
+        Modifies:
+            self._last_query, self._last_query_timestamp, self._last_results, self._query_id, self._is_processing
+        """
+        with self._processing_lock:
+            self._last_query = query
+            self._last_query_timestamp = datetime.now()
+            self._last_results = results[:5]  # Keep top 5 results
+            self._query_id = str(uuid.uuid4())
+            self._is_processing = False
             print(f"DEBUG: Cache updated - Query: '{query[:50]}...', Results: {len(results)}")
     
-    def set_processing(self, query: str):
-        """Mark that a query is being processed"""
-        with self.processing_lock:
-            self.is_processing = True
-            self.last_query = query
-            self.query_id = str(uuid.uuid4())
+    def set_processing(self, query: str) -> None:
+        """
+        Mark that a query is being processed.
+        
+        Args:
+            query: The search query string.
+        """
+        with self._processing_lock:
+            self._is_processing = True
+            self._last_query = query
+            self._query_id = str(uuid.uuid4())
             print(f"DEBUG: Started processing query: '{query[:50]}...'")
     
-    def get_cache_status(self):
-        """Get current cache status"""
-        with self.processing_lock:
+    def get_cache_status(self) -> Dict[str, Any]:
+        """
+        Get current cache status.
+        
+        Returns:
+            A dictionary containing the cache state.
+        """
+        with self._processing_lock:
             return {
-                'has_query': self.last_query is not None,
-                'query': self.last_query,
-                'query_id': self.query_id,
-                'results_count': len(self.last_results),
-                'timestamp': self.last_query_timestamp,
-                'is_processing': self.is_processing
+                'has_query': self._last_query is not None,
+                'query': self._last_query,
+                'query_id': self._query_id,
+                'results_count': len(self._last_results),
+                'timestamp': self._last_query_timestamp,
+                'is_processing': self._is_processing
             }
 
 ###
@@ -100,7 +137,7 @@ class SummarizeResponse(BaseModel):
 
 # Gemini RAG module
 class GeminiRAGModule:
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash") -> None:
         self.api_key = api_key
         self.model_name = model_name
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -160,7 +197,7 @@ Summary:"""
                         data = await response.json()
                         
                         if 'candidates' in data and len(data['candidates']) > 0:
-                            summary = data['candidates'][0]['content']['parts'][0]['text'].strip()
+                            summary = str(data['candidates'][0]['content']['parts'][0]['text']).strip()
                             print(f"DEBUG: Generated summary length: {len(summary)} characters")
                             return summary
                         else:
