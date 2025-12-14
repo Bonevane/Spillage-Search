@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 aiohttp
+aiofiles
 requests
 beautifulsoup4
 tqdm

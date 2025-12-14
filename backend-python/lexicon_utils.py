@@ -6,29 +6,29 @@ from config import lexicon_file, id_file
 # Initialize lemmatizer
 lemmatizer = WordNetLemmatizer()
 
-def preprocess_word(word):
+def preprocess_word(word: str) -> str:
     word = word.lower()
-    lemmatized_word = lemmatizer.lemmatize(word, pos="v")
+    lemmatized_word = str(lemmatizer.lemmatize(word, pos="v"))
     if lemmatized_word != word:
         return lemmatized_word
 
     # Try lemmatizing as noun
-    lemmatized_word = lemmatizer.lemmatize(word, pos="n")
+    lemmatized_word = str(lemmatizer.lemmatize(word, pos="n"))
     if lemmatized_word != word:
         return lemmatized_word
 
     # Try lemmatizing as adjective
-    lemmatized_word = lemmatizer.lemmatize(word, pos="a")
+    lemmatized_word = str(lemmatizer.lemmatize(word, pos="a"))
     if lemmatized_word != word:
         return lemmatized_word
 
     # Try lemmatizing as adverb
-    lemmatized_word = lemmatizer.lemmatize(word, pos="r")
+    lemmatized_word = str(lemmatizer.lemmatize(word, pos="r"))
     return lemmatized_word
 
 # Load lexicon
-def load_lexicon(lexicon_file):
-    lexicon = {}
+def load_lexicon(lexicon_file: str) -> dict[str, int]:
+    lexicon: dict[str, int] = {}
     if os.path.exists(lexicon_file):
         with open(lexicon_file, mode='r', encoding='utf-8') as file:
             csv_reader = csv.reader(file)
@@ -40,7 +40,7 @@ def load_lexicon(lexicon_file):
 
 
 # Adding any new entries to the lexicon file
-def save_words_to_lexicon(lexicon_dict, new_entries, latest_id):
+def save_words_to_lexicon(lexicon_dict: dict[str, int], new_entries: list[list[str | int]], latest_id: int) -> None:
     # Append new entries to the CSV
     with open(lexicon_file, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)

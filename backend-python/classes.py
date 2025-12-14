@@ -1,10 +1,35 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, TypedDict
 from datetime import datetime
 import threading
 import asyncio
 import aiohttp
 import uuid
+
+# Shared TypedDicts for internal data flow
+class ArticleData(TypedDict):
+    title: str
+    text: str
+    url: str
+    authors: List[str]
+    timestamp: Optional[str]
+    tags: List[str]
+    thumbnail: Optional[str]
+    description: str
+    members_only: bool
+    status_code: int
+
+class WordDataEntry(TypedDict):
+    frequency: int
+    positions: List[int]
+    sources: List[str]
+
+class InvertedIndexEntry(TypedDict):
+    word_id: int
+    doc_ids: List[int]
+    frequencies: List[int]
+    positions: List[List[int]]
+    sources: List[List[str]]
 
 ###
 ### Define the request/response body structures
@@ -111,6 +136,14 @@ class QueryCache:
                 'timestamp': self._last_query_timestamp,
                 'is_processing': self._is_processing
             }
+
+    @property
+    def last_results(self) -> List[Dict[str, Any]]:
+        """
+        Get the last results.
+        """
+        with self._processing_lock:
+            return list(self._last_results) # Return a copy to preserve encapsulation
 
 ###
 ### New models for summarization

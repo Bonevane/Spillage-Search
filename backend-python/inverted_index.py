@@ -72,10 +72,10 @@ def update_inverted_barrel(forward_barrel_file: str, inverted_barrel_file: str) 
     inverted_barrel: InvertedBarrel = {}
     
     for doc_id, data in forward_barrel.items():
-        word_ids = data[0]
-        frequencies = data[1]
-        positions = data[2]
-        sources = data[3]
+        word_ids = data['word_ids']
+        frequencies = data['frequencies']
+        positions = data['positions']
+        sources = data['sources']
         
         for i in range(len(word_ids)):
             word_id = word_ids[i]

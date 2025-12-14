@@ -11,10 +11,10 @@ from nltk import WordNetLemmatizer
 from heapq import nlargest
 
 from classes import QueryRequest, UrlRequest, SearchResult, QueryCache, SummarizeRequest, SummarizeArticleRequest, SummarizeResponse, GeminiRAGModule
-from lexicon_utils import load_lexicon, preprocess_word
+from search_engine import SearchEngine
 from config import inverted_index_folder, lexicon_file, processed_file, scrapped_file, received_file, lengths_file
-from csv_utils import load_processed_to_dict, load_scrapped_to_dict, load_lengths
-from medium_scraper import scrape_medium_article
+from medium_scraper import MediumScraper
+from task_manager import TaskManager
 
 import threading
 import struct
@@ -25,7 +25,7 @@ import asyncio
 import os
 import math
 import time as t
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from downloads import download_nltk_resources
 from dotenv import load_dotenv
@@ -36,9 +36,32 @@ download_nltk_resources()
 # FAST API SETUP
 ############################################################
 
+# Global Search Engine Instance
+search_engine: Optional[SearchEngine] = None
+query_cache = QueryCache()
+task_manager = TaskManager()
+
+from typing import AsyncGenerator
+
 # Use FastAPI lifespan event for startup/shutdown logic
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    global search_engine
+    # Startup: Initialize Search Engine
+    search_engine = SearchEngine(
+        lexicon_file=lexicon_file,
+        processed_file=processed_file,
+        scrapped_file=scrapped_file,
+        lengths_file=lengths_file,
+        inverted_index_folder=inverted_index_folder
+    )
+    
+    # Inject Search Engine into Task Manager
+    task_manager.set_search_engine(search_engine)
+    
+    # Start Task Manager Worker
+    asyncio.create_task(task_manager.worker())
+    
     # Startup: Initialize Gemini summarization service
     setup_gemini_summarization_service(
         api_key=os.getenv("GEMINI_API_KEY"),
@@ -48,35 +71,12 @@ async def lifespan(app: FastAPI):
     # Shutdown: Add any cleanup logic here if needed
 
 app = FastAPI(lifespan=lifespan)
-upload_lock = threading.Lock()
+# upload_lock removed in favor of TaskManager queue (Message-Passing)
 
 
 ############################################################
 # GLOBAL VARIABLES & BM25 PARAMS
 ############################################################
-
-# Loading lexicon, processed data, scrapped data and lengths data
-lexicon = load_lexicon(lexicon_file)
-vocab = list(lexicon.keys())
-processed_dict = load_processed_to_dict(processed_file)
-scrapped_dict = load_scrapped_to_dict(scrapped_file)
-lengths_dict = load_lengths(lengths_file)
-
-# BM25 parameters
-k = 1.5
-b = 0.75
-N = len(processed_dict)
-WORD_IN_QUERY_VAR = 3
-INTERSECTION_VAR = 10
-TITLE_CONTAINS_QUERY_VAR = 100
-TITLE_VAR = 12
-AUTHOR_VAR = 6
-TAG_VAR = 8
-avgdl = sum(lengths_dict.values()) / N
-
-# Loading lemmatizer and intializing it (For some reason it takes too long to lemmatize the first time)
-lemmatizer = WordNetLemmatizer()
-preprocess_word('apple')
 
 # Field size limit for CSV
 csv.field_size_limit(100_000_000)
@@ -95,204 +95,32 @@ app.add_middleware(
 
 
 ############################################################
-# SEARCH METHODS
-############################################################
-def append_inverted_barrel_data(lexicon, inverted_index_folder, word, data_dict):
-    try:
-        word_id = lexicon[word]
-        barrel = word_id // 1001
-        if word_id >= 1001:
-            position = word_id % 1001 + 1
-        else:
-            position = word_id % 1001
-        print(f"Processing word: {word}")
-
-        with open(f'{inverted_index_folder}/inverted_{barrel}.bin', 'rb') as file:
-            file.seek(8 * position)
-            data = file.read(16)
-            position = struct.unpack('Q', data[:8])[0]
-            next_position = struct.unpack('Q', data[8:])[0]
-
-        with open(f'{inverted_index_folder}/inverted_{barrel}.csv', 'rb') as file:
-            file.seek(position)
-            content = file.read(next_position - position).decode()
-            
-        csv_reader = csv.reader([content])  # Treat line as a single CSV row
-        for row in csv_reader:
-            word_id = int(row[0])  # First column is the word ID
-            doc_ids = json.loads(row[1])  # Second column: Document IDs (JSON array)
-            frequencies = json.loads(row[2])  # Third column: Frequencies
-            positions = json.loads(row[3])  # Fourth column: Positions
-            types = re.sub("'", '"', row[4])
-            types = json.loads(types)  # Fifth column: Types (title, tags, etc.)
-            
-            data_dict[word_id] = {
-                'doc_ids': doc_ids,
-                'frequencies': frequencies,
-                'positions': positions,
-                'types': types
-            }
-    except KeyError:
-        print(f'Word {word} not in Lexicon')
-    except Exception as e:
-        print(f'Error processing word {word}: {e}')
-
-
-def calculate_bm25_scores(item, results_list, query_word_ids, intersection):
-    word_id, data = item
-    doc_ids = data['doc_ids']
-    frequencies = data['frequencies']
-    sources = data['types']
-    
-    # Calculate IDF
-    n = len(doc_ids)  # Number of documents containing the term
-    IDF = math.log10((N - n + 0.5) / (n + 0.5))
-    
-    # Calculate BM25 scores for each document
-    for doc_id, frequency, source in zip(doc_ids, frequencies, sources):
-        length = lengths_dict[doc_id]  # Length of the document
-        TF = frequency / (frequency + k * (1 - b + b * length / avgdl))
-        score = TF * IDF * 100
-        
-        if doc_id in intersection:
-            score *= INTERSECTION_VAR
-        
-        if word_id in query_word_ids:
-            score *= WORD_IN_QUERY_VAR
-        
-        if "T" in source: 
-            score *= TITLE_VAR
-        if "A" in source:
-            score *= AUTHOR_VAR
-        if "Ta" in source:
-            score *= TAG_VAR
-        
-        results_list.append((score, doc_id))
-
-def find_intersection(inverted_data, query_word_ids):    
-    if not query_word_ids:
-        return set()  # Return an empty set if no valid word IDs are found
-
-    # Find the intersection of document IDs
-    for word_id in query_word_ids:
-        if word_id in inverted_data:
-            doc_ids = set(inverted_data[word_id]['doc_ids'])
-            break
-    else:
-        return set()
-    
-    for word_id in query_word_ids:
-        if word_id in inverted_data:
-            doc_ids &= set(inverted_data[word_id]['doc_ids'])
-    
-    return doc_ids
-
-
-def make_results(sorted_list, results):
-    counter = 0
-    processed_doc_ids = set()
-    for score, doc_ids in sorted_list: #[::-1]:
-        if doc_ids in processed_doc_ids:
-            continue  # Skip duplicate entries
-        processed_doc_ids.add(doc_ids)
-        
-        processed_data = processed_dict[doc_ids]
-        
-        description = "No description available"
-        thumbnail = "No thumbnail available"
-        member = "No"
-        
-        try:
-            description = scrapped_dict[int(doc_ids)]['description']
-            thumbnail = scrapped_dict[int(doc_ids)]['url']
-            member = scrapped_dict[int(doc_ids)]['member only']
-            if member == "Unknown":
-                continue
-        except (Exception):
-            pass
-        
-        results.append({
-            "id": doc_ids,
-            "title": processed_data['title'],
-            "description": description,
-            "thumbnail": thumbnail,
-            "url": processed_data['url'],
-            "tags": processed_data['tags'],
-            "authors": processed_data['authors'],
-            "date": processed_data['timestamp'],
-            "member" : member
-        })
-        
-        counter += 1
-        if counter >= 100:
-            break
-
-def get_top_100_results(score_docid_list):
-    return nlargest(150, score_docid_list, key=lambda x: x[0])
-
-
-############################################################
 # SEARCH APIs
 ############################################################
 
-query_cache = QueryCache()
-
 # Search API
 @app.post("/search", response_model=SearchResult)
-def search_documents(request: QueryRequest):
-    a = t.time()
-    
+async def search_documents(request: QueryRequest) -> SearchResult:
+    if search_engine is None:
+        raise HTTPException(status_code=503, detail="Search Engine not initialized")
+
     # Store original query and mark as processing
     original_query = request.query  # Store unprocessed query
     query_cache.set_processing(original_query)
     
-    query = request.query.lower()
-    results = []
-    bm25_scores = []
-    inverted_data = {}
-    results_list = []
-    query = word_tokenize(query)
-    query = list(set(query))
-    query = query[:10]
-    query = [preprocess_word(word) for word in query if preprocess_word(word) in lexicon]  # Preprocess each word in the query
-    query_word_ids = [lexicon[word] for word in query if word in lexicon]
-   
-    if not query:
-        # Even for empty results, update cache
-        query_cache.update_cache(original_query, [])
-        return {"results": [], "count": 0, "time": t.time() - a}
-   
-    top_words_list = query
-   
-    threads = []
-    for word in top_words_list:
-        thread = threading.Thread(target=append_inverted_barrel_data, args=(lexicon, inverted_index_folder, word, inverted_data))
-        threads.append(thread)
-        thread.start()
-   
-    # Wait for all threads to complete
-    for thread in threads:
-        thread.join()
-    intersection = find_intersection(inverted_data, query_word_ids)
-   
-    bm25_threads = []
-    for item in inverted_data.items():
-        thread = threading.Thread(target=calculate_bm25_scores, args=(item, results_list, query_word_ids, intersection))
-        bm25_threads.append(thread)
-        thread.start()
-    # Wait for all BM25 threads to complete
-    for thread in bm25_threads:
-        thread.join()
-    sorted_list = get_top_100_results(results_list)
-    make_results(sorted_list, results)
-    total_results = sum(len(data['doc_ids']) for data in inverted_data.values())
+    # Perform search using the SearchEngine ADT
+    result = await search_engine.search(request.query)
     
     # Update cache with results
-    query_cache.update_cache(original_query, results)
+    # Convert Result objects to dictionaries for the cache if needed, 
+    # or update QueryCache to accept Result objects.
+    # Assuming QueryCache expects dicts based on previous code, let's convert.
+    results_dicts = [r.dict() for r in result.results]
+    query_cache.update_cache(original_query, results_dicts)
     
-    print(f"Displaying {len(results)} of {sum(len(data['doc_ids']) for data in inverted_data.values())} results in {t.time() - a} seconds.")
+    print(f"Displaying {result.count} results in {result.time} seconds.")
    
-    return {"results": results, "count": total_results, "time": t.time() - a}
+    return result
 
 
 ############################################################
@@ -300,7 +128,7 @@ def search_documents(request: QueryRequest):
 ############################################################
 
 # Shared upload status dictionary
-upload_status = {
+upload_status: Dict[str, Any] = {
     "is_uploading": False,
     "current_step": None,
     "progress": 0,
@@ -308,7 +136,13 @@ upload_status = {
     "success": False,
 }
 
-def update_status(step=None, progress=None, error=None, success=None, is_uploading=None):
+def update_status(
+    step: Optional[str] = None, 
+    progress: Optional[int] = None, 
+    error: Optional[str] = None, 
+    success: Optional[bool] = None, 
+    is_uploading: Optional[bool] = None
+) -> None:
     if step is not None:
         upload_status["current_step"] = step
     if progress is not None:
@@ -321,7 +155,11 @@ def update_status(step=None, progress=None, error=None, success=None, is_uploadi
         upload_status["is_uploading"] = is_uploading
 
 
-def threaded_upload(url):
+def threaded_upload(url: str) -> None:
+    if search_engine is None:
+        update_status(step="Error: Search Engine not initialized", error="Search Engine not initialized", success=False)
+        return
+
     try:
         update_status(is_uploading=True, step="Starting upload...", progress=5, error=None, success=False)
 
@@ -335,16 +173,29 @@ def threaded_upload(url):
                 latest_doc_id = int(f.read().strip())
 
         update_status(step="Extracting article content...", progress=25)
+        
+        # Use data structures from search_engine
         result = scrape_and_add_article(
-            url, processed_dict, scrapped_dict, lengths_dict, latest_doc_id,
-            processed_file, scrapped_file, lengths_file, doc_id_file
+            url, 
+            search_engine.processed_dict, 
+            search_engine.scrapped_dict, 
+            search_engine.lengths_dict, 
+            latest_doc_id,
+            processed_file, 
+            scrapped_file, 
+            lengths_file, 
+            doc_id_file
         )
 
         if result['success']:
             update_status(step="Indexing article... This may take a few minutes", progress=70)
             stop_words = set(stopwords.words('english'))
             add_scraped_article_to_index(
-                result['data'], result['doc_id'], lexicon, inverted_index_folder, stop_words
+                result['data'], 
+                result['doc_id'], 
+                search_engine.lexicon, 
+                inverted_index_folder, 
+                stop_words
             )
             update_status(step="Completed", progress=100, success=True)
         else:
@@ -354,30 +205,29 @@ def threaded_upload(url):
         update_status(step="Error occurred", error=str(e), success=False)
 
     finally:
-        upload_lock.release()
         update_status(is_uploading=False)
 
 
 @app.post("/upload-url")
-async def upload_url(request: UrlRequest):
+async def upload_url(request: UrlRequest) -> JSONResponse:
     url = request.url
 
-    # Try to acquire the lock for upload
-    if not upload_lock.acquire(blocking=False):
+    # 18: Message-Passing
+    # Send message (URL) to the TaskManager queue
+    success = await task_manager.add_task(url)
+    
+    if not success:
         raise HTTPException(status_code=400, detail="A process is already running. Please try again later.")
 
-    # Reset status for new upload
-    update_status(is_uploading=True, step="Queued for upload...", progress=0, error=None, success=False)
+    # Reset status for new upload (handled by TaskManager, but we can set initial state here if needed)
+    task_manager.update_status(is_uploading=True, step="Queued for upload...", progress=0, error=None, success=False)
 
-    # Start the upload in a separate thread
-    thread = threading.Thread(target=threaded_upload, args=(url,))
-    thread.start()
-    return JSONResponse(content={"message": "Upload started in background. You can continue searching."})
+    return JSONResponse(content={"message": "Upload queued. You can continue searching."})
 
 
 @app.get("/upload-status")
-async def upload_status_endpoint():
-    return JSONResponse(content=upload_status)
+async def upload_status_endpoint() -> JSONResponse:
+    return JSONResponse(content=task_manager.status)
 
 
 
@@ -386,15 +236,15 @@ async def upload_status_endpoint():
 ############################################################
 
 # Global RAG module instance
-gemini_rag = None
+gemini_rag: Optional[GeminiRAGModule] = None
 
-def initialize_gemini_rag(api_key: str, model_name: str = "gemini-1.5-flash"):
+def initialize_gemini_rag(api_key: str, model_name: str = "gemini-1.5-flash") -> None:
     """Initialize the Gemini RAG module - call this at startup"""
     global gemini_rag
     gemini_rag = GeminiRAGModule(api_key, model_name)
     print("DEBUG: Gemini RAG module initialized")
 
-def convert_search_results_to_rag_format(search_results: List[Dict]) -> List[Dict]:
+def convert_search_results_to_rag_format(search_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Convert your search results format to RAG module format"""
     print(f"DEBUG: Converting {len(search_results)} search results to RAG format")
     
@@ -419,7 +269,7 @@ def convert_search_results_to_rag_format(search_results: List[Dict]) -> List[Dic
     return converted_results
 
 @app.post("/summarize", response_model=SummarizeResponse)
-async def summarize_results(request: SummarizeRequest):
+async def summarize_results(request: SummarizeRequest) -> SummarizeResponse:
     """Generate summary based on cached search results using Gemini"""
     print(f"DEBUG: Summarize request received - wait_for_results: {request.wait_for_results}")
     
@@ -463,7 +313,7 @@ async def summarize_results(request: SummarizeRequest):
             detail="No cached query found. Please perform a search first."
         )
     
-    query = request.custom_query or cache_status['query']
+    query = request.custom_query or str(cache_status['query'])
     cached_results = query_cache.last_results
     
     if not cached_results:
@@ -474,7 +324,7 @@ async def summarize_results(request: SummarizeRequest):
             query=query,
             sources=[],
             num_sources=0,
-            query_id=cache_status['query_id'],
+            query_id=str(cache_status['query_id']),
             cached_at=cache_status['timestamp']
         )
     
@@ -501,7 +351,7 @@ async def summarize_results(request: SummarizeRequest):
             query=query,
             sources=summary_result['sources'],
             num_sources=summary_result['num_sources'],
-            query_id=cache_status['query_id'],
+            query_id=str(cache_status['query_id']),
             cached_at=cache_status['timestamp']
         )
         
@@ -514,11 +364,16 @@ async def summarize_results(request: SummarizeRequest):
 
 
 @app.post("/summarize-article")
-async def summarize_article(request: SummarizeArticleRequest):
+async def summarize_article(request: SummarizeArticleRequest) -> Dict[str, Any]:
+    if gemini_rag is None:
+        raise HTTPException(status_code=503, detail="Gemini RAG module not initialized")
+
     # Scrape the article
-    article_data = scrape_medium_article(request.url)
-    if not article_data or "error" in article_data or not article_data.get("title"):
-        raise HTTPException(status_code=400, detail=f"Failed to scrape article: {article_data.get('error', 'No title found')}")
+    scraper = MediumScraper()
+    article_data = scraper.scrape_article(request.url)
+    
+    if not article_data or not article_data.get("title"):
+        raise HTTPException(status_code=400, detail="Failed to scrape article or no title found")
     
     # Prepare context for Gemini
     context = f"Title: {article_data['title']}\n\n{article_data['text']}\n\nDescription: {article_data.get('description', '')}"
@@ -541,10 +396,19 @@ async def summarize_article(request: SummarizeArticleRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
-async def generate_summary_with_gemini(query: str, search_results: List[Dict], summary_length: str = "short") -> Dict[str, Any]:
+async def generate_summary_with_gemini(query: str, search_results: List[Dict[str, Any]], summary_length: str = "short") -> Dict[str, Any]:
     """Generate summary using Gemini with pre-formatted results"""
     print(f"DEBUG: Generating Gemini summary for: '{query[:50]}...'")
     
+    if gemini_rag is None:
+        return {
+            'success': False,
+            'message': 'Gemini RAG module not initialized',
+            'summary': 'Service unavailable',
+            'sources': [],
+            'num_sources': 0
+        }
+
     try:
         # Prepare context from search results (keep it concise for short summaries)
         context_parts = []
@@ -596,7 +460,7 @@ async def generate_summary_with_gemini(query: str, search_results: List[Dict], s
 
 # Optional: Endpoint to check cache status
 @app.get("/search/status")
-def get_search_status():
+def get_search_status() -> Dict[str, Any]:
     """Get current search cache status"""
     cache_status = query_cache.get_cache_status()
     return {
@@ -606,15 +470,19 @@ def get_search_status():
 
 # Optional: Clear cache endpoint
 @app.post("/search/clear-cache")
-def clear_search_cache():
+def clear_search_cache() -> Dict[str, str]:
     """Clear the search cache"""
     global query_cache
     query_cache = QueryCache()
     return {"message": "Search cache cleared successfully"}
 
 # Setup function for Gemini
-def setup_gemini_summarization_service(api_key: str, model_name: str = "gemini-1.5-flash"):
+def setup_gemini_summarization_service(api_key: Optional[str], model_name: str = "gemini-1.5-flash") -> bool:
     """Setup the Gemini summarization service - call this at app startup"""
+    if not api_key:
+        print("DEBUG: No API key provided for Gemini summarization service")
+        return False
+        
     try:
         initialize_gemini_rag(api_key, model_name)
         print("DEBUG: Gemini summarization service setup completed")

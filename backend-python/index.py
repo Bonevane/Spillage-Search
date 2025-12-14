@@ -1,153 +1,202 @@
-# Comments GPT-ed, but hey, it does a decent job of explaining our unrecognizable code so why not
 import csv
+import os
+import re
+import ast
+import time as t
+from typing import List, Dict, Set, Tuple, Any, Optional
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+
+from config import (
+    id_file, 
+    doc_id_file, 
+    processed_file, 
+    forward_index_folder, 
+    inverted_index_folder,
+    lexicon_file
+)
 from csv_utils import load_latest_id, load_latest_doc_id, save_processed_docs, load_processed_entries
 from lexicon_utils import load_lexicon, preprocess_word, save_words_to_lexicon
 from forward_index import save_forward_index
 from inverted_index import update_inverted_barrel, create_offsets
-from config import forward_index_folder, inverted_index_folder
-import re
-import ast
-import os
+from classes import WordDataEntry
 
-
-# Barrel size determines how many documents each forward index file contains (arbitrary)
-barrel_size = 1001
-
-# Function to process and iteratively index a dataset
-def iterate_dataset(dataset_file, lexicon_file):
-    # Load necessary resources: stop words, processed entries, and the lexicon
-    stop_words = set(stopwords.words('english'))
-    processed_set = load_processed_entries()
-    lexicon = load_lexicon(lexicon_file)
-    latest_doc_id = load_latest_doc_id()
-    latest_id = load_latest_id()
+class DatasetIndexer:
+    """
+    Class responsible for indexing a dataset into forward indices.
     
-    # Open the dataset file for reading
-    with open(dataset_file, mode='r', encoding='utf-8') as file:    
-        csv_reader = csv.DictReader(file)
-        forward_entries = []
-        lexicon_entries = []
-        
-        for row in csv_reader:
-            # Check if the current document has already been processed
-            current_entry = (row['title'], row['url'], row['authors'], row['timestamp'], row['tags'])
-            if current_entry in processed_set:
-                continue  # Skip already processed entries
+    Attributes:
+        dataset_file (str): Path to the dataset CSV file.
+        lexicon_file (str): Path to the lexicon CSV file.
+        stop_words (Set[str]): Set of stop words to ignore.
+        processed_set (Set[Tuple[Any, ...]]): Set of already processed documents.
+        lexicon (Dict[str, int]): Mapping of words to word IDs.
+        latest_doc_id (int): The ID of the last processed document.
+        latest_id (int): The ID of the last assigned word ID.
+        lexicon_entries (List[List[Any]]): New entries to be added to the lexicon.
+        forward_entries (List[Dict[int, Dict[int, WordDataEntry]]]): Forward index data.
+    """
+    BARREL_SIZE = 1001
+
+    def __init__(self, dataset_file: str, lexicon_file: str):
+        self.dataset_file = dataset_file
+        self.lexicon_file = lexicon_file
+        self.stop_words: Set[str] = set(stopwords.words('english'))
+        self.processed_set: Set[Tuple[Any, ...]] = load_processed_entries()
+        self.lexicon: Dict[str, int] = load_lexicon(lexicon_file)
+        self.latest_doc_id: int = load_latest_doc_id()
+        self.latest_id: int = load_latest_id()
+        self.lexicon_entries: List[List[Any]] = []
+        self.forward_entries: List[Dict[int, Dict[int, WordDataEntry]]] = []
+
+    def iterate_dataset(self) -> None:
+        """
+        Iterates through the dataset and indexes new documents.
+        """
+        with open(self.dataset_file, mode='r', encoding='utf-8') as file:    
+            csv_reader = csv.DictReader(file)
             
-            # Index the current dataset row and update IDs
-            latest_id, latest_doc_id = index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_entries, forward_entries)
+            for row in csv_reader:
+                # Check if the current document has already been processed
+                # Note: row values are strings.
+                current_entry = (row['title'], row['url'], row['authors'], row['timestamp'], row['tags'])
+                if current_entry in self.processed_set:
+                    continue
+                
+                self._index_dataset_row(row)
 
-            # Mark the document as processed and save it
-            processed_set.add(current_entry)
-            save_processed_docs([[latest_doc_id, row['title'], row['url'], row['authors'], row['timestamp'], row['tags']]], latest_doc_id)
+                # Mark the document as processed and save it
+                self.processed_set.add(current_entry)
+                # TODO: Refactor save_processed_docs to take a cleaner input or use ArticleData
+                save_processed_docs([[
+                    self.latest_doc_id, 
+                    row['title'], 
+                    row['url'], 
+                    row['authors'], 
+                    row['timestamp'], 
+                    row['tags']
+                ]], self.latest_doc_id)
+                
+                if self.latest_doc_id % self.BARREL_SIZE == 0:
+                    self._save_batch()
             
-            # Write batches of data to disk after every `barrel_size` documents
-            if latest_doc_id % barrel_size == 0:
-                save_words_to_lexicon(lexicon, lexicon_entries, latest_id)
-                save_forward_index(forward_entries, forward_index_folder)
-                lexicon_entries.clear()
-                forward_entries.clear()
-                print(f"Writing batch {latest_doc_id - barrel_size} to {latest_doc_id}...")
+            # Save remaining
+            if self.forward_entries:
+                self._save_batch(final=True)
+
+    def _save_batch(self, final: bool = False) -> None:
+        save_words_to_lexicon(self.lexicon, self.lexicon_entries, self.latest_id)
+        save_forward_index(self.forward_entries, forward_index_folder)
+        self.lexicon_entries.clear()
         
-        # Save any remaining data after processing all rows
-        if forward_entries:
-            save_words_to_lexicon(lexicon, lexicon_entries, latest_id)
-            save_forward_index(forward_entries, forward_index_folder)
-            print(f"Writing batch {latest_doc_id - (latest_doc_id % barrel_size)} to {latest_doc_id}...")
-
-
-# Processing the tokens to encode their source and position in the articles
-def process_tokens(current_position, tokens, combined_tokens, sources, positions, type):
-    combined_tokens.extend(tokens)
-    sources.extend([type] * len(tokens))
-    positions.extend(list(range(current_position, current_position + len(tokens))))
-    return current_position + len(tokens)
-
-
-# Function to index a single dataset row
-def index_dataset(row, stop_words, latest_doc_id, latest_id, lexicon, lexicon_entries, forward_entries):
-    pattern = r'[^A-Za-z0-9 ]+'
-    combined_tokens = []
-    
-    # Process the title field: tokenize, clean, and filter stop words
-    title_tokens = [preprocess_word(token) for token in word_tokenize(re.sub(pattern, ' ', row['title']))]
-    title_tokens = [w for w in title_tokens if w.lower() not in stop_words and len(w) > 2]
-
-    # Process the text field: tokenize each paragraph, clean, and filter stop words
-    text_tokens = []
-    for paragraph in row['text'].split("\n"):
-        for token in word_tokenize(re.sub(pattern, ' ', paragraph)):
-            text_tokens.append(preprocess_word(token))
-    text_tokens = [w for w in text_tokens if w.lower() not in stop_words and len(w) > 2]
-    
-    # Handle potential errors in tags and authors fields (json.loads would've been better)
-    tags_tokens = []
-    authors_tokens = []
-    try:
-        tags_tokens = [preprocess_word(token) for tag in ast.literal_eval(row['tags']) for token in word_tokenize(re.sub(pattern, ' ', tag))]
-        authors_tokens = [preprocess_word(token) for author in ast.literal_eval(row['authors']) for token in word_tokenize(re.sub(pattern, ' ', author))]
-    except (ValueError, SyntaxError):   
-        print(f"Skipping row due to invalid tags format: {row['tags']}")
-    tags_tokens = [w for w in tags_tokens if w.lower() not in stop_words and len(w) > 2]
-    authors_tokens = [w for w in authors_tokens if w.lower() not in stop_words and len(w) > 2]
-
-    # Combine tokens from all fields, recording their sources and positions
-    combined_tokens = []
-    sources = []
-    positions = []
-    current_position = 0
-    
-    # Add title, text, tags, and authors tokens
-    current_position = process_tokens(current_position, title_tokens, combined_tokens, sources, positions, 'T')
-    current_position = process_tokens(current_position, text_tokens, combined_tokens, sources, positions, 'Te')
-    current_position = process_tokens(current_position, tags_tokens, combined_tokens, sources, positions, 'Ta')
-    current_position = process_tokens(current_position, authors_tokens, combined_tokens, sources, positions, 'A')
-
-    # Increment the document ID for the current row
-    latest_doc_id += 1
-
-    # Process tokens for the forward index
-    for position, (token, source) in enumerate(zip(combined_tokens, sources)):
-        if token not in lexicon:
-            # Assign a new ID to unseen tokens and add them to the lexicon
-            latest_id += 1
-            lexicon[token] = latest_id
-            lexicon_entries.append([latest_id, token])
-        word_id = lexicon.get(token)
+        start_batch = self.latest_doc_id - (self.latest_doc_id % self.BARREL_SIZE) if final else self.latest_doc_id - self.BARREL_SIZE
+        print(f"Writing batch {start_batch} to {self.latest_doc_id}...")
         
-        # Determine which barrel this token belongs to
-        barrel = word_id // barrel_size
-        
-        # Ensure the forward entries list is large enough to accommodate the barrel
-        if len(forward_entries) < barrel + 1:
-            forward_entries.extend([{} for _ in range(barrel - len(forward_entries) + 1)])
-        
-        # Initialize the document entry if it doesn't exist
-        if latest_doc_id not in forward_entries[barrel]:
-            forward_entries[barrel][latest_doc_id] = {}
-        
-        # Add token details to the forward index
-        if word_id is not None:
-            if word_id not in forward_entries[barrel][latest_doc_id]:
-                forward_entries[barrel][latest_doc_id][word_id] = {"frequency": 0, "positions": [], "sources": []}
-            forward_entries[barrel][latest_doc_id][word_id]["frequency"] += 1
-            forward_entries[barrel][latest_doc_id][word_id]["positions"].append(position)
-            forward_entries[barrel][latest_doc_id][word_id]["sources"].append(source)
-    
-    return latest_id, latest_doc_id
+        if not final:
+             self.forward_entries.clear()
 
+    def _process_tokens(self, current_position: int, tokens: List[str], combined_tokens: List[str], sources: List[str], positions: List[int], type_code: str) -> int:
+        combined_tokens.extend(tokens)
+        sources.extend([type_code] * len(tokens))
+        positions.extend(list(range(current_position, current_position + len(tokens))))
+        return current_position + len(tokens)
 
-# Function to create inverted indexes from forward indexes
-def create_inverted_index():
-    barrel = 0
-    while True:
-        # Check if the forward index for the current barrel exists
-        if os.path.isfile(forward_index_folder + f'/forward_{barrel}.csv'):
-            print(f"Creating inverted barrel {barrel}...")
-            update_inverted_barrel(forward_index_folder + f'/forward_{barrel}.csv', inverted_index_folder + f'/inverted_{barrel}.csv')
-            create_offsets(inverted_index_folder, barrel)
-            barrel += 1
-        else:
-            break
+    def _index_dataset_row(self, row: Dict[str, str]) -> None:
+        pattern = r'[^A-Za-z0-9 ]+'
+        
+        # Process fields
+        title_tokens = self._tokenize_and_clean(row['title'], pattern)
+        
+        text_tokens: List[str] = []
+        if 'text' in row:
+             for paragraph in row['text'].split("\n"):
+                text_tokens.extend(self._tokenize_and_clean(paragraph, pattern))
+        
+        tags_tokens: List[str] = []
+        authors_tokens: List[str] = []
+        try:
+            # Handle tags
+            tags_list = ast.literal_eval(row['tags'])
+            for tag in tags_list:
+                tags_tokens.extend(self._tokenize_and_clean(tag, pattern))
+            
+            # Handle authors
+            authors_list = ast.literal_eval(row['authors'])
+            for author in authors_list:
+                authors_tokens.extend(self._tokenize_and_clean(author, pattern))
+        except (ValueError, SyntaxError):   
+            print(f"Skipping row due to invalid tags/authors format: {row.get('tags', '')}")
+
+        # Combine tokens
+        combined_tokens: List[str] = []
+        sources: List[str] = []
+        positions: List[int] = []
+        current_position = 0
+        
+        current_position = self._process_tokens(current_position, title_tokens, combined_tokens, sources, positions, 'T')
+        current_position = self._process_tokens(current_position, text_tokens, combined_tokens, sources, positions, 'Te')
+        current_position = self._process_tokens(current_position, tags_tokens, combined_tokens, sources, positions, 'Ta')
+        current_position = self._process_tokens(current_position, authors_tokens, combined_tokens, sources, positions, 'A')
+
+        self.latest_doc_id += 1
+
+        # Update Forward Index
+        for position, (token, source) in enumerate(zip(combined_tokens, sources)):
+            if token not in self.lexicon:
+                self.latest_id += 1
+                self.lexicon[token] = self.latest_id
+                self.lexicon_entries.append([self.latest_id, token])
+            
+            word_id = self.lexicon[token]
+            barrel = word_id // self.BARREL_SIZE
+            
+            # Ensure forward_entries has enough barrels
+            while len(self.forward_entries) <= barrel:
+                self.forward_entries.append({})
+            
+            # Ensure doc_id exists in barrel
+            if self.latest_doc_id not in self.forward_entries[barrel]:
+                self.forward_entries[barrel][self.latest_doc_id] = {}
+            
+            # Add token data
+            if word_id not in self.forward_entries[barrel][self.latest_doc_id]:
+                self.forward_entries[barrel][self.latest_doc_id][word_id] = {
+                    "frequency": 0, 
+                    "positions": [], 
+                    "sources": []
+                }
+            
+            entry = self.forward_entries[barrel][self.latest_doc_id][word_id]
+            entry["frequency"] += 1
+            entry["positions"].append(position)
+            entry["sources"].append(source)
+
+    def _tokenize_and_clean(self, text: str, pattern: str) -> List[str]:
+        tokens = [preprocess_word(token) for token in word_tokenize(re.sub(pattern, ' ', text))]
+        return [w for w in tokens if w.lower() not in self.stop_words and len(w) > 2]
+
+class InvertedIndexBuilder:
+    """
+    Class responsible for creating inverted indices from forward indices.
+    """
+    @staticmethod
+    def create_inverted_index() -> None:
+        barrel = 0
+        while True:
+            forward_file = os.path.join(forward_index_folder, f'forward_{barrel}.csv')
+            if os.path.isfile(forward_file):
+                print(f"Creating inverted barrel {barrel}...")
+                inverted_file = os.path.join(inverted_index_folder, f'inverted_{barrel}.csv')
+                update_inverted_barrel(forward_file, inverted_file)
+                create_offsets(inverted_index_folder, barrel)
+                barrel += 1
+            else:
+                break
+
+# Backward compatibility functions
+def iterate_dataset(dataset_file: str, lexicon_file: str) -> None:
+    indexer = DatasetIndexer(dataset_file, lexicon_file)
+    indexer.iterate_dataset()
+
+def create_inverted_index() -> None:
+    InvertedIndexBuilder.create_inverted_index()

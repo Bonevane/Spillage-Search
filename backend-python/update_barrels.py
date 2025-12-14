@@ -6,12 +6,14 @@ import re
 import shutil
 from nltk.tokenize import word_tokenize
 from collections import defaultdict
+from typing import List, Dict, Tuple, Any, Optional, Set, TypedDict
+from classes import ArticleData, WordDataEntry, InvertedIndexEntry
 
-def preprocess_word(word):
+def preprocess_word(word: str) -> str:
     """Clean and preprocess a word"""
     return re.sub(r'[^A-Za-z0-9]', '', word).lower()
 
-def process_scraped_article_tokens(article_data, stop_words):
+def process_scraped_article_tokens(article_data: ArticleData, stop_words: Set[str]) -> Tuple[List[str], List[str], List[int]]:
     """
     Process scraped article data and extract tokens with positions and sources
     Similar to the index_dataset function but for scraped articles
@@ -28,7 +30,7 @@ def process_scraped_article_tokens(article_data, stop_words):
     
     # Process text tokens
     print("DEBUG: Processing text tokens...")
-    text_tokens = []
+    text_tokens: List[str] = []
     for paragraph in article_data['text'].split("\\n"):
         for token in word_tokenize(re.sub(pattern, ' ', paragraph)):
             text_tokens.append(preprocess_word(token))
@@ -37,7 +39,7 @@ def process_scraped_article_tokens(article_data, stop_words):
     
     # Process tags tokens
     print("DEBUG: Processing tags tokens...")
-    tags_tokens = []
+    tags_tokens: List[str] = []
     try:
         if isinstance(article_data['tags'], list):
             for tag in article_data['tags']:
@@ -51,7 +53,7 @@ def process_scraped_article_tokens(article_data, stop_words):
     
     # Process authors tokens
     print("DEBUG: Processing author tokens...")
-    authors_tokens = []
+    authors_tokens: List[str] = []
     try:
         if isinstance(article_data['authors'], list):
             for author in article_data['authors']:
@@ -64,9 +66,9 @@ def process_scraped_article_tokens(article_data, stop_words):
         authors_tokens = []
     
     # Combine tokens from all fields with their sources and positions
-    combined_tokens = []
-    sources = []
-    positions = []
+    combined_tokens: List[str] = []
+    sources: List[str] = []
+    positions: List[int] = []
     current_position = 0
     
     print("DEBUG: Combining tokens with position tracking...")
@@ -98,13 +100,13 @@ def process_scraped_article_tokens(article_data, stop_words):
     print(f"DEBUG: Total combined tokens: {len(combined_tokens)}")
     return combined_tokens, sources, positions
 
-def group_tokens_by_word(combined_tokens, sources, positions, lexicon, doc_id):
+def group_tokens_by_word(combined_tokens: List[str], sources: List[str], positions: List[int], lexicon: Dict[str, int], doc_id: int) -> Dict[str, WordDataEntry]:
     """
     Group tokens by word and aggregate their data for inverted index
     """
     print(f"DEBUG: Grouping tokens by word for doc_id: {doc_id}")
     
-    word_data = defaultdict(lambda: {'frequency': 0, 'positions': [], 'sources': []})
+    word_data: Dict[str, WordDataEntry] = defaultdict(lambda: {'frequency': 0, 'positions': [], 'sources': []})
     
     tokens_in_lexicon = 0
     tokens_not_in_lexicon = 0
@@ -124,7 +126,7 @@ def group_tokens_by_word(combined_tokens, sources, positions, lexicon, doc_id):
     
     return word_data
 
-def read_existing_row_data(inverted_index_folder, barrel_num, word_id):
+def read_existing_row_data(inverted_index_folder: str, barrel_num: int, word_id: int) -> Optional[InvertedIndexEntry]:
     """
     Read existing data for a specific word_id from the barrel
     """
@@ -162,7 +164,7 @@ def read_existing_row_data(inverted_index_folder, barrel_num, word_id):
         csv_reader = csv.reader([content])
         row = next(csv_reader)
         
-        existing_data = {
+        existing_data: InvertedIndexEntry = {
             'word_id': int(row[0]),
             'doc_ids': json.loads(row[1]),
             'frequencies': json.loads(row[2]),
@@ -180,7 +182,7 @@ def read_existing_row_data(inverted_index_folder, barrel_num, word_id):
         print(f"DEBUG: Error reading existing data: {e}")
         return None
 
-def update_row_data(existing_data, word_id, doc_id, frequency, positions, sources):
+def update_row_data(existing_data: Optional[InvertedIndexEntry], word_id: int, doc_id: int, frequency: int, positions: List[int], sources: List[str]) -> InvertedIndexEntry:
     """
     Update existing row data with new document information
     """
@@ -214,7 +216,7 @@ def update_row_data(existing_data, word_id, doc_id, frequency, positions, source
     print(f"DEBUG: Updated entry now has {len(existing_data['doc_ids'])} documents")
     return existing_data
 
-def update_csv_row_in_place(inverted_index_folder, barrel_num, word_id, updated_data):
+def update_csv_row_in_place(inverted_index_folder: str, barrel_num: int, word_id: int, updated_data: InvertedIndexEntry) -> None:
     """
     Update a specific row in the CSV file by rewriting the entire file
     """
@@ -250,7 +252,7 @@ def update_csv_row_in_place(inverted_index_folder, barrel_num, word_id, updated_
                         print(f"DEBUG: Found target word_id {word_id} at row {current_row}")
                         # Replace with updated data
                         new_row = [
-                            updated_data['word_id'],
+                            str(updated_data['word_id']),
                             json.dumps(updated_data['doc_ids']),
                             json.dumps(updated_data['frequencies']),
                             json.dumps(updated_data['positions']),
@@ -268,7 +270,7 @@ def update_csv_row_in_place(inverted_index_folder, barrel_num, word_id, updated_
         if not found_target:
             print(f"DEBUG: Word_id {word_id} not found, adding as new row")
             new_row = [
-                updated_data['word_id'],
+                str(updated_data['word_id']),
                 json.dumps(updated_data['doc_ids']),
                 json.dumps(updated_data['frequencies']),
                 json.dumps(updated_data['positions']),
@@ -291,7 +293,7 @@ def update_csv_row_in_place(inverted_index_folder, barrel_num, word_id, updated_
             os.remove(temp_file)
         raise
 
-def recreate_barrel_offsets(inverted_index_folder, barrel_num):
+def recreate_barrel_offsets(inverted_index_folder: str, barrel_num: int) -> None:
     """
     Recreate the offsets file for a barrel after updating CSV
     """
@@ -321,7 +323,7 @@ def recreate_barrel_offsets(inverted_index_folder, barrel_num):
         print(f"DEBUG: Error recreating offsets: {e}")
         raise
 
-def update_inverted_index_with_article(article_data, doc_id, lexicon, inverted_index_folder, stop_words):
+def update_inverted_index_with_article(article_data: ArticleData, doc_id: int, lexicon: Dict[str, int], inverted_index_folder: str, stop_words: Set[str]) -> bool:
     """
     Main function to process scraped article and update inverted index
     """
@@ -343,7 +345,7 @@ def update_inverted_index_with_article(article_data, doc_id, lexicon, inverted_i
         return False
     
     # Batch updates per barrel
-    barrel_updates = defaultdict(dict)  # barrel_num -> {word_id: updated_data}
+    barrel_updates: Dict[int, Dict[int, InvertedIndexEntry]] = defaultdict(dict)  # barrel_num -> {word_id: updated_data}
     for word, data in word_data.items():
         try:
             word_id = lexicon[word]
@@ -384,7 +386,7 @@ def update_inverted_index_with_article(article_data, doc_id, lexicon, inverted_i
                         if existing_word_id in updates:
                             # Replace with updated data
                             new_row = [
-                                updates[existing_word_id]['word_id'],
+                                str(updates[existing_word_id]['word_id']),
                                 json.dumps(updates[existing_word_id]['doc_ids']),
                                 json.dumps(updates[existing_word_id]['frequencies']),
                                 json.dumps(updates[existing_word_id]['positions']),
@@ -401,7 +403,7 @@ def update_inverted_index_with_article(article_data, doc_id, lexicon, inverted_i
                 if word_id not in found_word_ids:
                     print(f"DEBUG: Word_id {word_id} not found, adding as new row")
                     new_row = [
-                        updated_data['word_id'],
+                        str(updated_data['word_id']),
                         json.dumps(updated_data['doc_ids']),
                         json.dumps(updated_data['frequencies']),
                         json.dumps(updated_data['positions']),
@@ -423,7 +425,7 @@ def update_inverted_index_with_article(article_data, doc_id, lexicon, inverted_i
     print(f"DEBUG: Updated {len(word_data)} unique words across {len(barrel_updates)} barrels")
     return True
 
-def add_scraped_article_to_index(article_data, doc_id, lexicon, inverted_index_folder, stop_words):
+def add_scraped_article_to_index(article_data: ArticleData, doc_id: int, lexicon: Dict[str, int], inverted_index_folder: str, stop_words: Set[str]) -> bool:
     """
     Convenience function to add a scraped article to the inverted index
     

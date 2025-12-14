@@ -2,8 +2,9 @@ import re
 import csv
 import os
 import json
-from typing import Dict, List, Any, Union, Optional
+from typing import Dict, List, Any, Union, Optional, TypedDict, cast
 from pathlib import Path
+from classes import WordDataEntry
 
 # Type definitions
 DocID = int
@@ -12,13 +13,16 @@ Frequency = int
 Position = int
 Source = str
 
-# The structure loaded from CSV: [WordIDs, Frequencies, Positions, Sources]
-LoadedForwardData = List[Union[List[WordID], List[Frequency], List[List[Position]], List[List[Source]]]]
-ForwardBarrel = Dict[DocID, LoadedForwardData]
+class ForwardBarrelData(TypedDict):
+    word_ids: List[WordID]
+    frequencies: List[Frequency]
+    positions: List[List[Position]]
+    sources: List[List[Source]]
+
+ForwardBarrel = Dict[DocID, ForwardBarrelData]
 
 # The structure used during indexing before saving
-WordData = Dict[str, Any] # keys: 'frequency', 'positions', 'sources'
-InMemoryBarrel = Dict[DocID, Dict[WordID, WordData]]
+InMemoryBarrel = Dict[DocID, Dict[WordID, WordDataEntry]]
 ForwardIndex = List[InMemoryBarrel]
 
 
@@ -30,7 +34,7 @@ def load_forward_barrel(file_name: str) -> ForwardBarrel:
         file_name: The path to the forward barrel CSV file.
         
     Returns:
-        A dictionary mapping DocID to a list containing [WordIDs, Frequencies, Positions, Sources].
+        A dictionary mapping DocID to ForwardBarrelData.
         Returns an empty dictionary if the file does not exist.
     """
     forward_barrel: ForwardBarrel = {}
@@ -52,7 +56,12 @@ def load_forward_barrel(file_name: str) -> ForwardBarrel:
                 sources_str = re.sub('\'', '"', row['Sources'])
                 sources: List[List[Source]] = json.loads(sources_str)
                 
-                forward_barrel[doc_id] = [word_ids, frequencies, positions, sources]
+                forward_barrel[doc_id] = {
+                    "word_ids": word_ids,
+                    "frequencies": frequencies,
+                    "positions": positions,
+                    "sources": sources
+                }
                 
     return forward_barrel
 
