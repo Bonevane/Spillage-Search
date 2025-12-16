@@ -111,11 +111,11 @@ class SearchEngine:
         self, 
         doc_id: int, 
         query_terms: List[str], 
-        data_cache: Dict[str, Any],
+        optimized_cache: Dict[str, Dict[int, Any]],
         boolean_hits: Set[int]
     ) -> float:
         """
-        Calculate BM25 score for a single document.
+        Calculate BM25 score for a single document using optimized cache.
         """
         score = 0.0
         length = self.lengths_dict.get(doc_id, 0)
@@ -123,20 +123,16 @@ class SearchEngine:
             return 0.0
             
         for term in query_terms:
-            data = data_cache.get(term)
-            if not data:
+            term_data = optimized_cache.get(term)
+            if not term_data or doc_id not in term_data:
                 continue
                 
-            doc_ids = data['doc_ids']
-            if doc_id not in doc_ids:
-                continue
-                
-            idx = doc_ids.index(doc_id)
-            frequency = data['frequencies'][idx]
-            sources = data['types'][idx]
+            data = term_data[doc_id]
+            frequency = data['frequency']
+            sources = data['sources']
             
             # IDF
-            n = len(doc_ids)
+            n = len(term_data)
             IDF = math.log10((self.N - n + 0.5) / (n + 0.5))
             
             TF = frequency / (frequency + self.k * (1 - self.b + self.b * length / self.avgdl))
@@ -168,11 +164,6 @@ class SearchEngine:
         await self._fetch_data_for_query(query_ast, data_cache)
         
         # 3. Boolean Evaluation (Filtering)
-        # If the query is just terms (implicit AND/OR), we might want to rank all documents 
-        # that contain ANY term, but boost those that satisfy the boolean logic.
-        # For strict boolean search, we only return hits.
-        # Let's do a hybrid: Rank all docs that appear in data_cache, but boost boolean hits.
-        
         boolean_hits = self._evaluate_boolean(query_ast, data_cache)
         
         # Collect all candidate documents (Union of all terms)
@@ -180,22 +171,26 @@ class SearchEngine:
         for data in data_cache.values():
             candidate_docs.update(data['doc_ids'])
             
-        # If strict boolean is desired, uncomment:
-        # candidate_docs = boolean_hits 
-        
         if not candidate_docs:
              return SearchResult(results=[], count=0, time=t.time() - start_time)
 
         # 4. Scoring (BM25)
-        # Extract simple terms for BM25
-        # We can walk the AST or just use the keys in data_cache
+        # Optimization: Convert parallel lists to dicts for O(1) lookup
+        optimized_cache = {}
+        for term, data in data_cache.items():
+            doc_map = {}
+            for i, doc_id in enumerate(data['doc_ids']):
+                doc_map[doc_id] = {
+                    'frequency': data['frequencies'][i],
+                    'sources': data['types'][i]
+                }
+            optimized_cache[term] = doc_map
+
         query_terms = list(data_cache.keys())
-        
         results_list: List[Tuple[float, int]] = []
         
-        # This loop is CPU bound. In a real heavy app, we might offload to a ProcessPool.
         for doc_id in candidate_docs:
-            score = self._calculate_bm25_score(doc_id, query_terms, data_cache, boolean_hits)
+            score = self._calculate_bm25_score(doc_id, query_terms, optimized_cache, boolean_hits)
             results_list.append((score, doc_id))
             
         # 5. Sort and Format

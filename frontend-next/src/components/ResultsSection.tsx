@@ -74,7 +74,7 @@ export default function ResultsSection({
 
   const getViewUrl = (result: SearchResult) => {
     return result.member === "Yes"
-      ? `https://freedium.cfd/${result.url}`
+      ? `https://freedium-mirror.cfd/${result.url}`
       : result.url;
   };
 
