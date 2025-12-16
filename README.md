@@ -25,6 +25,101 @@ A high-performance search engine for Medium articles built on Google's foundatio
 - **Intelligent Caching**: Query caching for improved performance
 - **Members Only Content**: View member's only content for free on Freedium
 
+## 🛠️ Installation & Setup
+
+### Prerequisites
+
+- Python 3.8+
+- Node.js 18+
+- npm or yarn
+
+### 1. Backend Setup
+
+Navigate to the backend directory and install dependencies:
+
+```bash
+cd backend-python
+pip install -r requirements.txt
+```
+
+Set up environment variables:
+
+```bash
+cp .env.example .env
+# Add your Google Gemini API key to .env
+GEMINI_API_KEY=your_api_key_here
+```
+
+Download required NLTK resources:
+
+```bash
+python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt'); nltk.download('wordnet')"
+```
+
+### 2. Frontend Setup
+
+Navigate to the frontend directory and install dependencies:
+
+```bash
+cd frontend-next
+npm install
+```
+
+Set up environment variables:
+
+```bash
+cp .env.example .env.local
+# Configure API URL
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+## 🏃‍♂️ Usage
+
+### A) Running the Indexing
+
+To build the search index from the dataset (this may take some time depending on dataset size):
+
+```bash
+# From the backend-python directory
+python main.py
+```
+
+This script (`main.py`) runs `iterate_dataset` to process the CSV data and `create_inverted_index` to build the inverted index barrels.
+
+### B) Running the Application
+
+**Start the Backend Server:**
+
+```bash
+# From the backend-python directory
+uvicorn backend:app --reload
+```
+
+The API will be available at `http://localhost:8000`.
+
+**Start the Frontend Application:**
+
+```bash
+# From the frontend-next directory
+npm run dev
+```
+
+The UI will be available at `http://localhost:3000`.
+
+### C) Scraping Medium Articles
+
+The application supports real-time scraping and indexing of individual Medium articles.
+
+**Via the User Interface:**
+
+1. Open the application in your browser.
+2. Use the "Upload URL" feature.
+3. Paste a Medium article URL.
+4. The system will scrape the content, process it, and add it to the index in real-time.
+
+**Via API:**
+You can also trigger scraping programmatically by sending a POST request to `/upload-url` with the article URL.
+
 ## 🏗️ Architecture
 
 ### Backend (FastAPI)
@@ -49,80 +144,7 @@ A high-performance search engine for Medium articles built on Google's foundatio
 - **Coverage**: Diverse topics across Medium's ecosystem
 - **Preprocessing**: Cleaned, tokenized, and indexed using NLTK
 
-## 🛠️ Installation
-
-### Prerequisites
-
-- Python 3.8+
-- Node.js 16+
-- Google Gemini API key
-
-### Backend Setup
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/bonevane/spillage-search
-cd spillage-search/backend-python
-```
-
-2. Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-**Note**: May need to include Sentence Transformer for semantic search
-
-3. Set up environment variables:
-
-```bash
-cp .env.example .env
-# Add your Google Gemini API key to .env
-GEMINI_API_KEY=your_api_key_here
-```
-
-4. Download NLTK resources:
-
-```bash
-python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt'); nltk.download('wordnet')"
-```
-
-5. Run the FastAPI server:
-
-```bash
-uvicorn backend:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Frontend Setup
-
-1. Navigate to frontend directory:
-
-```bash
-cd ../frontend-next
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Set up environment variables:
-
-```bash
-cp .env.example .env.local
-# Configure API URL
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-4. Start the development server:
-
-```bash
-npm run dev
-```
-
-## 🔧 Configuration
+## Configuration
 
 ### BM25 Parameters
 
