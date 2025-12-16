@@ -14,7 +14,7 @@ Before you begin, ensure you have the following installed on your system:
 
 ## 📥 1. Cloning the Repository
 
-*Note that the ZIP file provided in the submission has a test dataset provided.*
+_Note that the ZIP file provided in the submission has a test dataset provided._
 
 The repository contains large dataset and index files tracked by Git LFS. To clone the repository **without downloading the large files** (to save bandwidth and disk space initially), use the following command:
 
@@ -34,7 +34,6 @@ cd spillage-search
 ```
 
 > **Note**: If you need the dataset files later to run the indexing process, you can pull them specifically using `git lfs pull`.
-
 
 ## ⚙️ 2. Backend Setup
 
@@ -96,7 +95,7 @@ The project uses ANTLR for query parsing. If the `antlr_generated` folder is mis
 2.  **Run Generation Command**:
 
     ```bash
-    # Windows
+    # Windows - Inside backend-python/ (with venv activated)
     antlr4 -Dlanguage=Python3 -visitor -no-listener -o antlr_generated grammar/Query.g4
 
     # Linux/Mac (assuming antlr4 alias is set)
@@ -133,9 +132,9 @@ npm install
 
 ## 🚀 4. Running the Application
 
-### A. Building the Index (Optional)
+### A. Building the Index
 
-If you have the dataset (e.g., `medium_articles.csv`) and want to rebuild the search index from scratch:
+If you have the dataset (e.g., `1000_dataset.csv`) and want to rebuild the search index from scratch:
 
 1.  Ensure the dataset file is present in `backend-python/datasets/`.
 2.  Run the indexing script:
