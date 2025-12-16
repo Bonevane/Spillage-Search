@@ -23,13 +23,6 @@ class MediumScraper:
     def __init__(self) -> None:
         """Initialize the MediumScraper with a requests session."""
         self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive',
-        })
 
     @staticmethod
     def is_medium_or_freedium_url(url: str) -> Optional[str]:
@@ -71,7 +64,7 @@ class MediumScraper:
                     return 'medium'
             
             # Check for Freedium
-            if domain == 'freedium.cfd':
+            if domain == 'freedium-mirror.cfd':
                 return 'freedium'
                 
             return None
@@ -89,8 +82,32 @@ class MediumScraper:
             ArticleData dict with article data or None if failed.
         """
         try:
-            response = self.session.get(url, timeout=15)
-            response.raise_for_status()
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0',
+            }
+        
+            # Use session to handle cookies/redirects better
+            try:
+                response = self.session.get(url, headers=headers, timeout=15)
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                if e.response.status_code == 403 and 'freedium-mirror.cfd' not in url:
+                    print(f"DEBUG: 403 Forbidden on {url}. Retrying via Freedium...")
+                    freedium_url = f"https://freedium-mirror.cfd/{url}"
+                    response = self.session.get(freedium_url, headers=headers, timeout=15)
+                    response.raise_for_status()
+                else:
+                    raise e
             
             soup = BeautifulSoup(response.content, 'html.parser')
             
