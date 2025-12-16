@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: Initialize Gemini summarization service
     setup_gemini_summarization_service(
         api_key=os.getenv("GEMINI_API_KEY"),
-        model_name="gemini-1.5-flash"  # Free tier model
+        model_name="gemini-2.5-flash"  # Free tier model
     )
     yield
     # Shutdown: Add any cleanup logic here if needed
@@ -238,7 +238,7 @@ async def upload_status_endpoint() -> JSONResponse:
 # Global RAG module instance
 gemini_rag: Optional[GeminiRAGModule] = None
 
-def initialize_gemini_rag(api_key: str, model_name: str = "gemini-1.5-flash") -> None:
+def initialize_gemini_rag(api_key: str, model_name: str = "gemini-2.5-flash") -> None:
     """Initialize the Gemini RAG module - call this at startup"""
     global gemini_rag
     gemini_rag = GeminiRAGModule(api_key, model_name)
@@ -477,7 +477,7 @@ def clear_search_cache() -> Dict[str, str]:
     return {"message": "Search cache cleared successfully"}
 
 # Setup function for Gemini
-def setup_gemini_summarization_service(api_key: Optional[str], model_name: str = "gemini-1.5-flash") -> bool:
+def setup_gemini_summarization_service(api_key: Optional[str], model_name: str = "gemini-2.5-flash") -> bool:
     """Setup the Gemini summarization service - call this at app startup"""
     if not api_key:
         print("DEBUG: No API key provided for Gemini summarization service")
