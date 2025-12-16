@@ -85,6 +85,21 @@ The search engine requires specific NLTK data for text processing.
 python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt'); nltk.download('wordnet')"
 ```
 
+### F. Generate ANTLR Parser (If needed)
+
+The project uses ANTLR for query parsing. If the `antlr_generated` folder is missing or you modify the grammar, regenerate the parser:
+
+1.  **Install Java**: Ensure Java (JRE/JDK) is installed and in your PATH.
+2.  **Run Generation Command**:
+
+    ```bash
+    # Windows
+    antlr4 -Dlanguage=Python3 -visitor -no-listener -o antlr_generated grammar/Query.g4
+
+    # Linux/Mac (assuming antlr4 alias is set)
+    antlr4 -Dlanguage=Python3 -visitor -no-listener -o antlr_generated grammar/Query.g4
+    ```
+
 ## 💻 3. Frontend Setup
 
 ### A. Navigate to Frontend Directory

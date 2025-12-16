@@ -9,3 +9,4 @@ python-dotenv
 nltk
 pydantic
 numpy
+antlr4-python3-runtime

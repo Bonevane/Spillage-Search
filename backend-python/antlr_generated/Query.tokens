@@ -1,0 +1,12 @@
+OR=1
+AND=2
+NOT=3
+LPAREN=4
+RPAREN=5
+WORD=6
+WS=7
+'OR'=1
+'AND'=2
+'NOT'=3
+'('=4
+')'=5
