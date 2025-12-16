@@ -14,6 +14,8 @@ Before you begin, ensure you have the following installed on your system:
 
 ## 📥 1. Cloning the Repository
 
+*Note that the ZIP file provided in the submission has a test dataset provided.*
+
 The repository contains large dataset and index files tracked by Git LFS. To clone the repository **without downloading the large files** (to save bandwidth and disk space initially), use the following command:
 
 ### Windows (PowerShell)
@@ -32,6 +34,7 @@ cd spillage-search
 ```
 
 > **Note**: If you need the dataset files later to run the indexing process, you can pull them specifically using `git lfs pull`.
+
 
 ## ⚙️ 2. Backend Setup
 
