@@ -1,8 +1,6 @@
 *.npy
 .env
 
-test*.py
-
 __pycache__/
 
 backup/
