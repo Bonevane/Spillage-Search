@@ -11,6 +11,8 @@ from nltk.corpus import stopwords
 from lexicon_utils import load_lexicon
 from update_barrels import add_scraped_article_to_index
 
+FREEDIUM_DOMAINS = [d.strip() for d in os.getenv("FREEDIUM_DOMAINS", "freedium.cfd,freedium-mirror.cfd").split(",")]
+
 # Field size limit for CSV
 csv.field_size_limit(100_000_000)
 
@@ -48,7 +50,7 @@ def is_medium_or_freedium_url(url):
                 return 'medium'
         
         # Check for Freedium
-        if domain == 'freedium.cfd':
+        if domain in FREEDIUM_DOMAINS:
             return 'freedium'
             
         return None

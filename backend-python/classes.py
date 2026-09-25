@@ -100,7 +100,7 @@ class SummarizeResponse(BaseModel):
 
 # Gemini RAG module
 class GeminiRAGModule:
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-3.5-flash-lite"):
         self.api_key = api_key
         self.model_name = model_name
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -149,8 +149,10 @@ Summary:"""
                     "temperature": 0.3,  # Lower temperature for more focused responses
                     "topK": 20,
                     "topP": 0.8,
-                    "maxOutputTokens": 150 if summary_length == "short" else 300,
-                    "candidateCount": 1
+                    "maxOutputTokens": 1024 if summary_length == "short" else 2048,
+                    "candidateCount": 1,
+                    # 3.x models always think a little; keep it low and leave room in the output budget
+                    "thinkingConfig": {"thinkingLevel": "low"}
                 }
             }
             

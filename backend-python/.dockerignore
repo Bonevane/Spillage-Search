@@ -4,3 +4,5 @@ __pycache__/
 datasets/
 indexes_old/
 forward/
+# Only needed to rebuild the index offline (index.py), not at runtime
+indexes/forward/

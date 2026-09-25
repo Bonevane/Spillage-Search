@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize Gemini summarization service
     setup_gemini_summarization_service(
         api_key=os.getenv("GEMINI_API_KEY"),
-        model_name="gemini-1.5-flash"  # Free tier model
+        model_name=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     )
     yield
     # Shutdown: Add any cleanup logic here if needed
@@ -388,7 +388,7 @@ async def upload_status_endpoint():
 # Global RAG module instance
 gemini_rag = None
 
-def initialize_gemini_rag(api_key: str, model_name: str = "gemini-1.5-flash"):
+def initialize_gemini_rag(api_key: str, model_name: str = "gemini-3.5-flash-lite"):
     """Initialize the Gemini RAG module - call this at startup"""
     global gemini_rag
     gemini_rag = GeminiRAGModule(api_key, model_name)
@@ -613,7 +613,7 @@ def clear_search_cache():
     return {"message": "Search cache cleared successfully"}
 
 # Setup function for Gemini
-def setup_gemini_summarization_service(api_key: str, model_name: str = "gemini-1.5-flash"):
+def setup_gemini_summarization_service(api_key: str, model_name: str = "gemini-3.5-flash-lite"):
     """Setup the Gemini summarization service - call this at app startup"""
     try:
         initialize_gemini_rag(api_key, model_name)

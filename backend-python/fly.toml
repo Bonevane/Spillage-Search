@@ -10,6 +10,8 @@ primary_region = 'sin'
 
 [env]
   PORT = '8080'
+  GEMINI_MODEL = 'gemini-3.5-flash-lite'
+  FREEDIUM_DOMAINS = 'freedium.cfd,freedium-mirror.cfd'
 
 [http_service]
   internal_port = 8080
